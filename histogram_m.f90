@@ -3,12 +3,11 @@ module histogram_m
   include "mpif.h"
   private
   public initialize_histogram, print_histogram_configs, generate_and_output_histograms
-  public nhx, nhy, nhz, nbx, nby, nbz
+  public nhx, nhy, nhz
 
   !----------------------------------------
   !variables for histograms (PDFs)
   integer nhx, nhy, nhz           ! number of histograms in each direction per domain decomposition
-  integer nbx, nby, nbz           ! number of bins per histogram in each dimension
   ! a map from string to pointers
   integer, parameter :: limit = 10
   integer :: nHistConfigs
@@ -87,14 +86,12 @@ module histogram_m
     call mpi_bcast(nhx, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(nhy, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(nhz, 1, MPI_INTEGER, 0, gcomm, ierr)
-    call mpi_bcast(nbx, 1, MPI_INTEGER, 0, gcomm, ierr)
-    call mpi_bcast(nby, 1, MPI_INTEGER, 0, gcomm, ierr)
-    call mpi_bcast(nbz, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(nHistConfigs, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(ndim_hist, limit, MPI_INTEGER, 0, gcomm, ierr)
+    call mpi_bcast(nbin_hist, limit * 3, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(vars_hist, limit * 3 * 15, MPI_CHARACTER, 0, gcomm, ierr)
-    call mpi_bcast(mins_hist, limit, MPI_REAL8, 0, gcomm, ierr)
-    call mpi_bcast(maxs_hist, limit, MPI_REAL8, 0, gcomm, ierr)
+    call mpi_bcast(mins_hist, limit * 3, MPI_REAL8, 0, gcomm, ierr)
+    call mpi_bcast(maxs_hist, limit * 3, MPI_REAL8, 0, gcomm, ierr)
 
   end subroutine initialize_histogram
 
