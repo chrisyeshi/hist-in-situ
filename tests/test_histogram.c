@@ -21,7 +21,7 @@ void test_get_number_of_nonempty_bins() {
     assert(0 == get_number_of_nonempty_bins(0, 0));
 }
 
-void test_frequencies_to_histogram_dense() {
+void test_frequencies_to_histogram_1d_dense() {
     int32_t i;
     int32_t frequencies[5] = {0, 0, 1, 2, 3};
     int32_t nbins[] = {5};
@@ -41,11 +41,81 @@ void test_frequencies_to_histogram_dense() {
         assert(hist.buffer[i] == frequencies[i]);
 }
 
-void test_frequencies_to_histogram_sparse() {
+void test_frequencies_to_histogram_2d_dense() {
+    int32_t i;
+    int32_t frequencies[6] = {3, 0, 4, 0, 2, 45};
+    int32_t nbins[] = {2, 3};
+    double mins[] = {12.34, 23.45};
+    double maxs[] = {34.56, 45.67};
+    Histogram hist = frequencies_to_histogram_dense(
+            2, frequencies, nbins, 4, mins, maxs, 0.67);
+    assert(2 == hist.ndims);
+    assert(0 == hist.issparse);
+    assert(2 == hist.nbins[0]);
+    assert(3 == hist.nbins[1]);
+    assert(12.34 == hist.mins[0]);
+    assert(23.45 == hist.mins[1]);
+    assert(34.56 == hist.maxs[0]);
+    assert(45.67 == hist.maxs[1]);
+    assert(0.67 == hist.percentinrange);
+    assert(frequencies != hist.buffer);
+    for (i = 0; i < 6; ++i)
+        assert(hist.buffer[i] == frequencies[i]);
+}
+
+void test_frequencies_to_histogram_3d_dense() {
+    int32_t i;
+    int32_t frequencies[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    int32_t nbins[] = {2, 2, 2};
+    double mins[] = {2.3, 3.4, 4.5};
+    double maxs[] = {3.4, 4.5, 5.6};
+    Histogram hist = frequencies_to_histogram_dense(
+            3, frequencies, nbins, 7, mins, maxs, 0.56);
+    assert(3 == hist.ndims);
+    assert(0 == hist.issparse);
+    assert(2 == hist.nbins[0]);
+    assert(2 == hist.nbins[1]);
+    assert(2 == hist.nbins[2]);
+    assert(2.3 == hist.mins[0]);
+    assert(3.4 == hist.mins[1]);
+    assert(4.5 == hist.mins[2]);
+    assert(3.4 == hist.maxs[0]);
+    assert(4.5 == hist.maxs[1]);
+    assert(5.6 == hist.maxs[2]);
+    assert(0.56 == hist.percentinrange);
+    assert(frequencies != hist.buffer);
+    for (i = 0; i < 8; ++i)
+        assert(hist.buffer[i] == frequencies[i]);
+}
+
+void test_frequencies_to_histogram_1d_sparse() {
+    int32_t frequencies[7] = {3, 0, 0, 45, 0, 8, 0};
+    int32_t nbins[] = {7};
+    double mins[] = {5.6};
+    double maxs[] = {6.7};
+    Histogram hist = frequencies_to_histogram_sparse(
+            1, frequencies, nbins, 3, mins, maxs, 0.56);
+    assert(1 == hist.ndims);
+    assert(1 == hist.issparse);
+    assert(7 == hist.nbins[0]);
+    assert(3 == hist.nnonemptybins);
+    assert(5.6 == hist.mins[0]);
+    assert(6.7 == hist.maxs[0]);
+    assert(0.56 == hist.percentinrange);
+    assert(frequencies != hist.buffer);
+    assert(0 == hist.buffer[0]);
+    assert(3 == hist.buffer[1]);
+    assert(3 == hist.buffer[2]);
+    assert(45 == hist.buffer[3]);
+    assert(5 == hist.buffer[4]);
+    assert(8 == hist.buffer[5]);
+}
+
+void test_frequencies_to_histogram_2d_sparse() {
     int32_t frequencies[4] = {0, 5, 0, 0};
     int32_t nbins[] = {2, 2};
-    double mins[] = {12.34};
-    double maxs[] = {34.56};
+    double mins[] = {12.34, 23.45};
+    double maxs[] = {34.56, 45.67};
     Histogram hist = frequencies_to_histogram_sparse(
             2, frequencies, nbins, 1, mins, maxs, 0.78);
     assert(2 == hist.ndims);
@@ -54,11 +124,42 @@ void test_frequencies_to_histogram_sparse() {
     assert(2 == hist.nbins[1]);
     assert(1 == hist.nnonemptybins);
     assert(12.34 == hist.mins[0]);
+    assert(23.45 == hist.mins[1]);
     assert(34.56 == hist.maxs[0]);
+    assert(45.67 == hist.maxs[1]);
     assert(0.78 == hist.percentinrange);
     assert(frequencies != hist.buffer);
     assert(1 == hist.buffer[0]);
     assert(5 == hist.buffer[1]);
+}
+
+void test_frequencies_to_histogram_3d_sparse() {
+    int32_t frequencies[8] = {0, 9, 0, 0, 2, 0, 50, 0};
+    int32_t nbins[] = {2, 2, 2};
+    double mins[] = {1.2, 2.3, 3.4};
+    double maxs[] = {2.3, 3.4, 4.5};
+    Histogram hist = frequencies_to_histogram_sparse(
+            3, frequencies, nbins, 3, mins, maxs, 0.45);
+    assert(3 == hist.ndims);
+    assert(1 == hist.issparse);
+    assert(2 == hist.nbins[0]);
+    assert(2 == hist.nbins[1]);
+    assert(2 == hist.nbins[2]);
+    assert(3 == hist.nnonemptybins);
+    assert(1.2 == hist.mins[0]);
+    assert(2.3 == hist.mins[1]);
+    assert(3.4 == hist.mins[2]);
+    assert(2.3 == hist.maxs[0]);
+    assert(3.4 == hist.maxs[1]);
+    assert(4.5 == hist.maxs[2]);
+    assert(0.45 == hist.percentinrange);
+    assert(frequencies != hist.buffer);
+    assert(1 == hist.buffer[0]);
+    assert(9 == hist.buffer[1]);
+    assert(4 == hist.buffer[2]);
+    assert(2 == hist.buffer[3]);
+    assert(6 == hist.buffer[4]);
+    assert(50 == hist.buffer[5]);
 }
 
 void test_frequencies_to_histogram() {
@@ -239,8 +340,12 @@ void test_values_to_bin_index() {
 int main(void) {
     test_total_number_of_bins();
     test_get_number_of_nonempty_bins();
-    test_frequencies_to_histogram_dense();
-    test_frequencies_to_histogram_sparse();
+    test_frequencies_to_histogram_1d_dense();
+    test_frequencies_to_histogram_2d_dense();
+    test_frequencies_to_histogram_3d_dense();
+    test_frequencies_to_histogram_1d_sparse();
+    test_frequencies_to_histogram_2d_sparse();
+    test_frequencies_to_histogram_3d_sparse();
     test_frequencies_to_histogram();
     test_generate_histogram_from_sampling_region();
     test_write_histogram_meta();
