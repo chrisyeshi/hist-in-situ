@@ -23,7 +23,7 @@ module reference_m
   real*8 t_ref        
   real*8 t_o          
   real*8 p_ref        
-  real*8 time_ref     
+  real*8 time_ref
   real*8 cp_ref       
   real*8 univ_gascon  
   real*8 g_ref        

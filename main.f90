@@ -4,6 +4,7 @@ program histogram
   use histogram_m
   use profiler_m
   use variables_m
+  use tracer_m
 
   ! initialize some testing data
   integer :: x, y, z
@@ -32,7 +33,7 @@ program histogram
 
   !---------------------------------------------------
   ! (optional) printing the histogram configuration
-  call print_histogram_configs( 6 )
+  ! call print_histogram_configs( 6 )
   !---------------------------------------------------
 
   !---------------------------------------------------
@@ -43,6 +44,9 @@ program histogram
     call profile_start("histogram")
     call generate_and_output_histograms( 6 )
     call profile_pause("histogram")
+    call profile_start("tracer")
+    call write_sorted_tracer_savefile( 6 )
+    call profile_pause("tracer")
     ! other tasks within the simulation loop
     call profile_pause("simulation")
     call profile_mpi_advance()
