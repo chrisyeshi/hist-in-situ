@@ -27,6 +27,7 @@ typedef struct {
 void c_generate_and_output_histogram_1d_(
         double *ptr_values,
         double *ptr_log_base,
+        char* ptr_method,
         double *ptr_min, double *ptr_max,
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
@@ -38,6 +39,7 @@ void c_generate_and_output_histogram_1d_(
 void c_generate_and_output_histogram_2d_(
         double *ptr_values_x, double *ptr_values_y,
         double *ptr_log_base_x, double *ptr_log_base_y,
+        char *ptr_method_x, char *ptr_method_y,
         double *ptr_min_x, double *ptr_min_y,
         double *ptr_max_x, double *ptr_max_y,
         double *ptr_timestep,
@@ -50,6 +52,7 @@ void c_generate_and_output_histogram_2d_(
 void c_generate_and_output_histogram_3d_(
         double *ptr_values_x, double *ptr_values_y, double *ptr_values_z,
         double *ptr_log_base_x, double *ptr_log_base_y, double *ptr_log_base_z,
+        char *ptr_method_x, char *ptr_method_y, char* ptr_method_z,
         double *ptr_min_x, double *ptr_min_y, double *ptr_min_z,
         double *ptr_max_x, double *ptr_max_y, double *ptr_max_z,
         double *ptr_timestep,
@@ -64,20 +67,26 @@ int32_t total_number_of_bins(int32_t ndims, int32_t nbins[]);
 int32_t get_number_of_nonempty_bins(int32_t* frequencies, int32_t nbins);
 
 Histogram frequencies_to_histogram_dense(
-        int32_t ndims, int32_t* frequencies, int32_t nbins[], int32_t nnonemptybins,
-        double mins[], double maxs[], double percentinrange);
+        int32_t ndims, int32_t* frequencies, int32_t nbins[],
+        int32_t nnonemptybins, double mins[], double maxs[],
+        double percentinrange);
 
 Histogram frequencies_to_histogram_sparse(
-        int32_t ndims, int32_t* frequencies, int32_t nbins[], int32_t nnonemptybins,
-        double mins[], double maxs[], double percentinrange);
+        int32_t ndims, int32_t* frequencies, int32_t nbins[],
+        int32_t nnonemptybins, double mins[], double maxs[],
+        double percentinrange);
 
 Histogram frequencies_to_histogram(
         int32_t ndims, int32_t* frequencies, int32_t nbins[],
         double mins[], double maxs[], double percentinrange);
 
+void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
+        char* methods[], double mins[], double maxs[], double adjmins[],
+        double adjmaxs[]);
+
 Histogram generate_histogram_from_sampling_region(
-        int32_t ndims, SamplingRegion samplingregion,
-        int32_t nbins[], double mins[], double maxs[]);
+        int32_t ndims, SamplingRegion samplingregion, int32_t nbins[],
+        double mins[], double maxs[]);
 
 void deallocate_histogram(Histogram hist);
 
@@ -121,7 +130,8 @@ int32_t values_to_bin_index(int32_t ndims, double values[],
         double mins[], double maxs[], int32_t nbins[]);
 
 void generate_and_output_histogram(
-        double* values[], double log_bases[], double mins[], double maxs[],
+        double* values[], double log_bases[], char* methods[],
+        double mins[], double maxs[],
         double timestep,
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,

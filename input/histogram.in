@@ -1,27 +1,35 @@
-=========================================================================
+================================================================================
 Histogram dimensions
-=========================================================================
-2 2 2          - nHistograms in x,y,z directions per domain decomposition
-=========================================================================
+================================================================================
+2 2 2             - nHistograms in x,y,z directions per domain decomposition
+================================================================================
 Variables for the histograms
 List of variables:
-xvel           - x component of velocity 
-yvel           - y component of velocity
-zvel           - z component of velocity
-volum          - inverse of density
-pressure       - pressure
-temp           - temperature
+xvel              - x component of velocity
+yvel              - y component of velocity
+zvel              - z component of velocity
+volum             - inverse of density
+pressure          - pressure
+temp              - temperature
 plus all the variables in chem.asc
-=========================================================================
-3              - histogram dimension
-5 5 5          - nBins in each dimension
-temp 0.0 0.1
-pressure 0.1 0.2
-volum 0.2 0.3
-2              - histogram dimension
-2 2            - nBins in each dimension
-xvel 0 12
-yvel 0 12
-1              - histogram dimension
-6              - nBins in each dimension
-yvel 4 12
+
+Ways to the specify the histogram bin boundaries array:
+range             - the range is specified in raw scalar values, the
+                    intermediate bins are evenly distributed
+normalized_range  - the range is specified in terms of the range of the samples,
+                    the intermediate bins are evenly distributed
+percent_range     - the range is specified in terms of the number of samples,
+                    the intermediate bins are evenly distributed
+================================================================================
+3                 - histogram dimension
+4 4 4             - nBins in each dimension
+temp range 0.0 0.1
+pressure range 0.1 0.9
+volumn range 0.1 0.9
+2                 - histogram dimension
+2 2 2             - nBins in each dimension
+volum normalized_range 0.1 0.9
+xvel normalized_range 0.1 0.9
+1                 - histogram dimension
+6                 - nBins in each dimension
+yvel percent_range 0.1 0.9

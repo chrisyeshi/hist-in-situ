@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include <assert.h>
 #include <histogram.h>
 
@@ -176,8 +177,67 @@ void test_frequencies_to_histogram() {
     assert(1 == sparsehist.issparse);
 }
 
+void test_adjust_range_by_methods() {
+    int32_t ngridx = 10, ngridy = 10, ngridz = 10;
+    int32_t ngrids = ngridx * ngridy * ngridz;
+    int32_t igrid, x, y, z;
+    SamplingRegion samplingregion;
+    char* methods[3];
+    double vala = 0.0, valb = 0.0, valc = 990.0;
+    double mins[3], maxs[3], adjmins[3], adjmaxs[3];
+    samplingregion.xbeg = 3;
+    samplingregion.xend = 8;
+    samplingregion.ybeg = 2;
+    samplingregion.yend = 4;
+    samplingregion.zbeg = 0;
+    samplingregion.zend = 10;
+    samplingregion.ngridx = ngridx;
+    samplingregion.ngridy = ngridy;
+    samplingregion.ngridz = ngridz;
+    samplingregion.ndims = 3;
+    samplingregion.valuearrays[0] = malloc(ngrids * sizeof(double));
+    samplingregion.valuearrays[1] = malloc(ngrids * sizeof(double));
+    samplingregion.valuearrays[2] = malloc(ngrids * sizeof(double));
+    for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+    for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+    for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+        igrid = x + y * ngridx + z * ngridy * ngridx;
+        samplingregion.valuearrays[0][igrid] = vala;
+        samplingregion.valuearrays[1][igrid] = valb;
+        samplingregion.valuearrays[2][igrid] = valc;
+        vala += 0.1;
+        valb += 1.0;
+        valc -= 10.0;
+    }
+    methods[0] = malloc(30 * sizeof(char));
+    strncpy(methods[0], "range", 5);
+    methods[1] = malloc(30 * sizeof(char));
+    strncpy(methods[1], "normalized_range", 16);
+    methods[2] = malloc(30 * sizeof(char));
+    strncpy(methods[2], "percent_range", 13);
+    mins[0] = 0.5; maxs[0] = 0.7;
+    mins[1] = 0.2; maxs[1] = 0.8;
+    mins[2] = 0.1; maxs[2] = 0.9;
+
+    adjust_range_by_methods(samplingregion.ndims, samplingregion, methods, mins,
+            maxs, adjmins, adjmaxs);
+    assert(adjmins[0] == 0.5 && adjmaxs[0] == 0.7);
+    assert(fabs(adjmins[1] - 0.2 * 99.0) < 0.0001);
+    assert(fabs(adjmaxs[1] - 0.8 * 99.0) < 0.0001);
+    assert(fabs(adjmins[2] - 100.0) < 0.0001);
+    assert(fabs(adjmaxs[2] - 900.0) < 0.0001);
+
+    free(methods[0]);
+    free(methods[1]);
+    free(methods[2]);
+    free(samplingregion.valuearrays[0]);
+    free(samplingregion.valuearrays[1]);
+    free(samplingregion.valuearrays[2]);
+}
+
 void test_generate_histogram_from_sampling_region() {
     int32_t i, nbins[1];
+    char* methods[1];
     double mins[1], maxs[1];
     SamplingRegion samplingregion;
     samplingregion.xbeg = 3;
@@ -199,8 +259,11 @@ void test_generate_histogram_from_sampling_region() {
     nbins[0] = 20;
     mins[0] = 4.0;
     maxs[0] = 7.0;
+    methods[0] = malloc(30);
+    strncpy(methods[0], "range", 5);
     Histogram hist = generate_histogram_from_sampling_region(
             1, samplingregion, nbins, mins, maxs);
+    free(methods[0]);
     assert(1 == hist.ndims);
     assert(1 == hist.nnonemptybins);
     assert(6 == hist.buffer[0]);
@@ -347,6 +410,7 @@ int main(void) {
     test_frequencies_to_histogram_2d_sparse();
     test_frequencies_to_histogram_3d_sparse();
     test_frequencies_to_histogram();
+    test_adjust_range_by_methods();
     test_generate_histogram_from_sampling_region();
     test_write_histogram_meta();
     test_write_histogram_1d();

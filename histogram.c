@@ -3,9 +3,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <float.h>
 #include <assert.h>
 #include <math.h>
 #include <mpi.h>
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 /// TODO: change histogram dimension to a, b, c
 
@@ -251,9 +255,74 @@ int32_t values_to_bin_index(int32_t ndims, double values[],
     return ids_to_flat(ndims, nbins, ibins);
 }
 
+int cmpdouble(const void *a, const void *b) {
+    double aa = *(double*)a;
+    double bb = *(double*)b;
+    if (aa == bb) return 0;
+    if (aa > bb) return 1;
+    return -1;
+}
+
+void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
+        char* methods[], double mins[], double maxs[], double adjmins[],
+        double adjmaxs[]) {
+    // helper variables
+    int32_t ngridx = samplingregion.ngridx;
+    int32_t ngridy = samplingregion.ngridy;
+    int32_t ngridz = samplingregion.ngridz;
+    int32_t x, y, z;
+    int32_t ibin, igrid, nnonemptybins, idim, isample, minpos, maxpos;
+    double value, samplemin, samplemax, *samples;
+    int32_t regionngrids =
+            (samplingregion.xend - samplingregion.xbeg) *
+            (samplingregion.yend - samplingregion.ybeg) *
+            (samplingregion.zend - samplingregion.zbeg);
+    for (idim = 0; idim < ndims; ++idim) {
+        if (0 == strncmp(methods[idim], "range", 5)) {
+            // do nothing
+            adjmins[idim] = mins[idim];
+            adjmaxs[idim] = maxs[idim];
+        } else if (0 == strncmp(methods[idim], "normalized_range", 16)) {
+            // get sample min and sample max by iterating all the samples
+            samplemin = DBL_MAX;
+            samplemax = -DBL_MAX;
+            for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+            for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+            for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+                igrid = x + y * ngridx + z * ngridy * ngridx;
+                value = samplingregion.valuearrays[idim][igrid];
+                samplemin = MIN(samplemin, value);
+                samplemax = MAX(samplemax, value);
+            }
+            // linear interpolate to adjust the min and max
+            adjmins[idim] = mins[idim] * (samplemax - samplemin) + samplemin;
+            adjmaxs[idim] = maxs[idim] * (samplemax - samplemin) + samplemin;
+        } else if (0 == strncmp(methods[idim], "percent_range", 13)) {
+            // put all samples into an array for qsort
+            samples = (double*)malloc(regionngrids * sizeof(double));
+            isample = 0;
+            for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+            for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+            for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+                igrid = x + y * ngridx + z * ngridy * ngridx;
+                samples[isample++] = samplingregion.valuearrays[idim][igrid];
+            }
+            // quicksort the array
+            qsort(samples, regionngrids, sizeof(double), cmpdouble);
+            // query the position in the sorted array for the min and max.
+            minpos = floor(mins[idim] * regionngrids) + 0.5;
+            maxpos = ceil(maxs[idim] * regionngrids) + 0.5;
+            adjmins[idim] = samples[minpos];
+            adjmaxs[idim] = samples[maxpos];
+            // free the allocated array
+            free(samples);
+        }
+    }
+}
+
 Histogram generate_histogram_from_sampling_region(
-        int32_t ndims, SamplingRegion samplingregion,
-        int32_t nbins[], double mins[], double maxs[]) {
+        int32_t ndims, SamplingRegion samplingregion, int32_t nbins[],
+        double mins[], double maxs[]) {
     // helper variables
     int32_t ngridx = samplingregion.ngridx;
     int32_t ngridy = samplingregion.ngridy;
@@ -293,17 +362,19 @@ Histogram generate_histogram_from_sampling_region(
 
 /// TODO: consider exposing this to the fortran interface
 void generate_and_output_histogram(
-        double* values[], double log_bases[], double mins[], double maxs[],
+        double* values[], double log_bases[], char* methods[],
+        double mins[], double maxs[],
         double timestep,
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
-        int32_t nbins[], int32_t myid, int32_t iconfig) {    
+        int32_t nbins[], int32_t myid, int32_t iconfig) {
     // declare variables
     int32_t nhists = nhistx * nhisty * nhistz;
     int32_t ihist, ihistx, ihisty, ihistz;
     SamplingRegion samplingregion;
     Histogram* hists = malloc(nhists * sizeof(Histogram));
+    double adjmins[MAX_DIM], adjmaxs[MAX_DIM];
     // generate the histograms
     for (ihistz = 0; ihistz < nhistz; ++ihistz)
     for (ihisty = 0; ihisty < nhisty; ++ihisty)
@@ -312,8 +383,10 @@ void generate_and_output_histogram(
         samplingregion = construct_sampling_region(
                 values, ndims, ngridx, ngridy, ngridz,
                 nhistx, nhisty, nhistz, ihistx, ihisty, ihistz);
+        adjust_range_by_methods(
+                ndims, samplingregion, methods, mins, maxs, adjmins, adjmaxs);
         hists[ihist] = generate_histogram_from_sampling_region(
-                ndims, samplingregion, nbins, mins, maxs);
+                ndims, samplingregion, nbins, adjmins, adjmaxs);
     }
     // print to screen and write to file
     print_domain_histograms(
@@ -332,6 +405,7 @@ void generate_and_output_histogram(
 void c_generate_and_output_histogram_1d_(
         double *ptr_values,
         double *ptr_log_base,
+        char *ptr_method,
         double *ptr_min, double *ptr_max,
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
@@ -341,6 +415,7 @@ void c_generate_and_output_histogram_1d_(
         int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
     double *values = ptr_values, log_base = *ptr_log_base;
+    char *method = ptr_method;
     double minimum = *ptr_min, maximum = *ptr_max;
     double timestep = *ptr_timestep;
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
@@ -350,14 +425,15 @@ void c_generate_and_output_histogram_1d_(
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;
     // generate and output
-    generate_and_output_histogram(&values, &log_base, &minimum, &maximum,
-            timestep, 1, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
-            &nbins, myid, iconfig);
+    generate_and_output_histogram(&values, &log_base, &method, &minimum,
+            &maximum, timestep, 1, ngridx, ngridy, ngridz, nhistx, nhisty,
+            nhistz, &nbins, myid, iconfig);
 }
 
 void c_generate_and_output_histogram_2d_(
         double *ptr_values_x, double *ptr_values_y,
         double *ptr_log_base_x, double *ptr_log_base_y,
+        char *ptr_method_x, char *ptr_method_y,
         double *ptr_min_x, double *ptr_min_y,
         double *ptr_max_x, double *ptr_max_y,
         double *ptr_timestep,
@@ -369,6 +445,7 @@ void c_generate_and_output_histogram_2d_(
     // convert from pointers to actual input arguments
     double* values[MAX_DIM] = {ptr_values_x, ptr_values_y};
     double log_bases[MAX_DIM] = {*ptr_log_base_x, *ptr_log_base_y};
+    char* methods[MAX_DIM] = {ptr_method_x, ptr_method_y};
     double mins[MAX_DIM] = {*ptr_min_x, *ptr_min_y};
     double maxs[MAX_DIM] = {*ptr_max_x, *ptr_max_y};
     double timestep = *ptr_timestep;
@@ -379,14 +456,15 @@ void c_generate_and_output_histogram_2d_(
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;
     // generate and output
-    generate_and_output_histogram(values, log_bases, mins, maxs, timestep,
-            2, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins, myid,
-            iconfig);
+    generate_and_output_histogram(values, log_bases, methods, mins, maxs,
+            timestep, 2, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins,
+            myid, iconfig);
 }
 
 void c_generate_and_output_histogram_3d_(
         double *ptr_values_x, double *ptr_values_y, double *ptr_values_z,
         double *ptr_log_base_x, double *ptr_log_base_y, double *ptr_log_base_z,
+        char *ptr_method_x, char *ptr_method_y, char *ptr_method_z,
         double *ptr_min_x, double *ptr_min_y, double *ptr_min_z,
         double *ptr_max_x, double *ptr_max_y, double *ptr_max_z,
         double *ptr_timestep,
@@ -397,7 +475,9 @@ void c_generate_and_output_histogram_3d_(
         int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
     double* values[MAX_DIM] = {ptr_values_x, ptr_values_y, ptr_values_z};
-    double log_bases[MAX_DIM] = {*ptr_log_base_x, *ptr_log_base_y, *ptr_log_base_z};
+    double log_bases[MAX_DIM] =
+            {*ptr_log_base_x, *ptr_log_base_y, *ptr_log_base_z};
+    char* methods[MAX_DIM] = {ptr_method_x, ptr_method_y, ptr_method_z};
     double mins[MAX_DIM] = {*ptr_min_x, *ptr_min_y, *ptr_min_z};
     double maxs[MAX_DIM] = {*ptr_max_x, *ptr_max_y, *ptr_max_z};
     double timestep = *ptr_timestep;
@@ -408,7 +488,7 @@ void c_generate_and_output_histogram_3d_(
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;
     // generate and output
-    generate_and_output_histogram(values, log_bases, mins, maxs, timestep,
-            3, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins, myid,
-            iconfig);
+    generate_and_output_histogram(values, log_bases, methods, mins, maxs,
+            timestep, 3, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins,
+            myid, iconfig);
 }

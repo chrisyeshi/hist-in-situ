@@ -33,7 +33,7 @@ program histogram
 
   !---------------------------------------------------
   ! (optional) printing the histogram configuration
-  ! call print_histogram_configs( 6 )
+  call print_histogram_configs( 6 )
   !---------------------------------------------------
 
   !---------------------------------------------------
