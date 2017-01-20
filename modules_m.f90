@@ -15,24 +15,24 @@ end module param_m
 
 module reference_m
   implicit none
-  real*8 a_ref        
-  real*8 l_ref        
-  real*8 rho_ref      
-  real*8 lambda_ref   
-  real*8 mu_ref       
-  real*8 t_ref        
-  real*8 t_o          
-  real*8 p_ref        
+  real*8 a_ref
+  real*8 l_ref
+  real*8 rho_ref
+  real*8 lambda_ref
+  real*8 mu_ref
+  real*8 t_ref
+  real*8 t_o
+  real*8 p_ref
   real*8 time_ref
-  real*8 cp_ref       
-  real*8 univ_gascon  
-  real*8 g_ref        
-  real*8 pres_atm     
-  real*8 re      
-  real*8 re_real 
-  real*8 mach_no 
-  real*8 rr_ref  
-  real*8 hr_ref  
+  real*8 cp_ref
+  real*8 univ_gascon
+  real*8 g_ref
+  real*8 pres_atm
+  real*8 re
+  real*8 re_real
+  real*8 mach_no
+  real*8 rr_ref
+  real*8 hr_ref
 end module reference_m
 
 module runtime_m
@@ -44,7 +44,7 @@ end module runtime_m
 module topology_m
   implicit none
   include 'mpif.h'
-  integer :: myid = 0, yid = 0, ypes = 5, xz_id = 0
+  integer :: myid = 0, yid = 0, ypes = 1, xz_id = 0
   integer :: gcomm = MPI_COMM_WORLD, ycomm = MPI_COMM_WORLD
   integer :: ierr
 

@@ -194,7 +194,7 @@ void write_domain_histograms(
     int32_t ihist;
     char filename[100];
     FILE* outfile;
-    printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, myid);
+    // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, myid);
     sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig, myid);
     outfile = fopen(filename, "wb");
     write_histogram_meta(

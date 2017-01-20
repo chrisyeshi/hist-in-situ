@@ -20,3 +20,11 @@ enable_testing()
 add_executable(test_histogram tests/test_histogram.c ${SOURCES})
 target_link_libraries(test_histogram ${MPI_Fortran_LIBRARIES})
 add_test(test_histogram test_histogram)
+
+add_executable(test_tracer tests/test_tracer.f90 ${SOURCES})
+target_link_libraries(test_tracer ${MPI_Fortran_LIBRARIES})
+add_test(test_tracer test_tracer)
+
+add_executable(test_mpi_tracer tests/test_mpi_tracer.f90 ${SOURCES})
+target_link_libraries(test_mpi_tracer ${MPI_Fortran_LIBRARIES})
+add_test(NAME test_mpi_tracer COMMAND ${MPIEXEC} "-n" 2 "./test_mpi_tracer")

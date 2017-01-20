@@ -8,6 +8,7 @@ module histogram_m
   !----------------------------------------
   !variables for histograms (PDFs)
   integer nhx, nhy, nhz           ! number of histograms in each direction per domain decomposition
+  integer, parameter :: TOTAL_NUMBER_OF_HISTS = 32768
   ! a map from string to pointers
   integer, parameter :: limit = 10
   integer :: nHistConfigs
