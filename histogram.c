@@ -263,6 +263,56 @@ int cmpdouble(const void *a, const void *b) {
     return -1;
 }
 
+void flatten_sampling_region(
+        SamplingRegion samplingregion, int32_t idim, double samples[]) {
+    int32_t isample = 0, x, y, z, igrid;
+    int32_t ngridx = samplingregion.ngridx;
+    int32_t ngridy = samplingregion.ngridy;
+    int32_t ngridz = samplingregion.ngridz;
+    for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+    for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+    for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+        igrid = x + y * ngridx + z * ngridy * ngridx;
+        samples[isample++] = samplingregion.valuearrays[idim][igrid];
+    }
+}
+
+int32_t flatten_sampling_region_with_range(SamplingRegion samplingregion,
+        int32_t idim, double min, double max, double samples[]) {
+    int32_t isample = 0, x, y, z, igrid;
+    int32_t ngridx = samplingregion.ngridx;
+    int32_t ngridy = samplingregion.ngridy;
+    int32_t ngridz = samplingregion.ngridz;
+    double value;
+    for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+    for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+    for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+        igrid = x + y * ngridx + z * ngridy * ngridx;
+        value = samplingregion.valuearrays[idim][igrid];
+        if (min <= value && value < max)
+            samples[isample++] = value;
+    }
+    return isample;
+}
+
+int32_t count_samples_in_sampling_region_in_range(SamplingRegion samplingregion,
+        int32_t idim, double min, double max) {
+    int32_t isample = 0, x, y, z, igrid;
+    int32_t ngridx = samplingregion.ngridx;
+    int32_t ngridy = samplingregion.ngridy;
+    int32_t ngridz = samplingregion.ngridz;
+    double value;
+    for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+    for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+    for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+        igrid = x + y * ngridx + z * ngridy * ngridx;
+        value = samplingregion.valuearrays[idim][igrid];
+        if (min <= value && value < max)
+            ++isample;
+    }
+    return isample;
+}
+
 void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
         char* methods[], double mins[], double maxs[], double adjmins[],
         double adjmaxs[]) {
@@ -270,7 +320,7 @@ void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
     int32_t ngridx = samplingregion.ngridx;
     int32_t ngridy = samplingregion.ngridy;
     int32_t ngridz = samplingregion.ngridz;
-    int32_t x, y, z;
+    int32_t x, y, z, i;
     int32_t ibin, igrid, nnonemptybins, idim, isample, minpos, maxpos;
     double value, samplemin, samplemax, *samples;
     int32_t regionngrids =
@@ -300,13 +350,7 @@ void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
         } else if (0 == strncmp(methods[idim], "percent_range", 13)) {
             // put all samples into an array for qsort
             samples = (double*)malloc(regionngrids * sizeof(double));
-            isample = 0;
-            for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
-            for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
-            for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
-                igrid = x + y * ngridx + z * ngridy * ngridx;
-                samples[isample++] = samplingregion.valuearrays[idim][igrid];
-            }
+            flatten_sampling_region(samplingregion, idim, samples);
             // quicksort the array
             qsort(samples, regionngrids, sizeof(double), cmpdouble);
             // query the position in the sorted array for the min and max.
@@ -314,6 +358,56 @@ void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
             maxpos = ceil(maxs[idim] * regionngrids) + 0.5;
             adjmins[idim] = samples[minpos];
             adjmaxs[idim] = samples[maxpos];
+            // free the allocated array
+            free(samples);
+        }
+    }
+}
+
+void compute_nbins(int32_t ndims, SamplingRegion samplingregion, double mins[],
+        double maxs[], char* nbinstrs[], int32_t nbins[]) {
+    int32_t idim, regionngrids, i, nsamples;
+    double *samples, iqr, q1, q3, h;
+    for (idim = 0; idim < ndims; ++idim) {
+        int32_t nbin = atoi(nbinstrs[idim]);
+        if (nbin > 0) {
+            nbins[idim] = nbin;
+        } else if (0 == strncmp(nbinstrs[idim], "sturges", 7)) {
+            nsamples = count_samples_in_sampling_region_in_range(
+                    samplingregion, idim, mins[idim], maxs[idim]);
+            // printf("nsamples = %d\n", nsamples);
+            if (0 == nsamples) {
+                nbins[idim] = 1;
+            } else {
+                nbins[idim] = ceil(log2((double)nsamples)) + 1;
+            }
+        } else { // if (0 == strncmp(nbinstrs[idim], "freedman", 8)) {
+            // put all samples into an array for qsort
+            regionngrids =
+                    (samplingregion.xend - samplingregion.xbeg) *
+                    (samplingregion.yend - samplingregion.ybeg) *
+                    (samplingregion.zend - samplingregion.zbeg);
+            samples = (double*)malloc(regionngrids * sizeof(double));
+            nsamples = flatten_sampling_region_with_range(
+                    samplingregion, idim, mins[idim], maxs[idim], samples);
+            // quicksort the array
+            qsort(samples, nsamples, sizeof(double), cmpdouble);
+            // compute IQR (interquartile range)
+            q1 = samples[(int)(1.0 / 4.0 * nsamples)];
+            q3 = samples[(int)(3.0 / 4.0 * nsamples)];
+            iqr = q3 - q1;
+            if (0 == nsamples) {
+                h = 0.0;
+            } else {
+                h = 2 * iqr / pow((double)nsamples, 1.0/3.0);
+            }
+            if (h < DBL_EPSILON) {
+                nbins[idim] = 1;
+            } else {
+                nbins[idim] = MIN(MAX_NBINS, (maxs[idim] - mins[idim]) / h);
+            }
+            // printf("nsamples = %d, q1 = %f, q3 = %f, iqr = %f, h = %f, and nbins = %d\n",
+                    // nsamples, q1, q3, iqr, h, nbins[idim]);
             // free the allocated array
             free(samples);
         }
@@ -368,13 +462,14 @@ void generate_and_output_histogram(
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
-        int32_t nbins[], int32_t myid, int32_t iconfig) {
+        char* nbinstrs[], int32_t myid, int32_t iconfig) {
     // declare variables
     int32_t nhists = nhistx * nhisty * nhistz;
     int32_t ihist, ihistx, ihisty, ihistz;
     SamplingRegion samplingregion;
     Histogram* hists = malloc(nhists * sizeof(Histogram));
     double adjmins[MAX_DIM], adjmaxs[MAX_DIM];
+    int32_t nbins[MAX_DIM];
     // generate the histograms
     for (ihistz = 0; ihistz < nhistz; ++ihistz)
     for (ihisty = 0; ihisty < nhisty; ++ihisty)
@@ -383,8 +478,12 @@ void generate_and_output_histogram(
         samplingregion = construct_sampling_region(
                 values, ndims, ngridx, ngridy, ngridz,
                 nhistx, nhisty, nhistz, ihistx, ihisty, ihistz);
+        /// TODO: optimize the following 3 functions into first flattening the
+        /// sampling region into an array, and then create histogram with the 1d
+        /// array.
         adjust_range_by_methods(
                 ndims, samplingregion, methods, mins, maxs, adjmins, adjmaxs);
+        compute_nbins(ndims, samplingregion, adjmins, adjmaxs, nbinstrs, nbins);
         hists[ihist] = generate_histogram_from_sampling_region(
                 ndims, samplingregion, nbins, adjmins, adjmaxs);
     }
@@ -410,7 +509,7 @@ void c_generate_and_output_histogram_1d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbin,
+        char *ptr_nbin,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
@@ -420,7 +519,7 @@ void c_generate_and_output_histogram_1d_(
     double timestep = *ptr_timestep;
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
-    int32_t nbins = *ptr_nbin;
+    char *nbins = ptr_nbin;
     int32_t myid = *ptr_myid, rootid = *ptr_rootid;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;
@@ -439,7 +538,7 @@ void c_generate_and_output_histogram_2d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbinx, int32_t *ptr_nbiny,
+        char *ptr_nbinx, char *ptr_nbiny,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
@@ -451,7 +550,7 @@ void c_generate_and_output_histogram_2d_(
     double timestep = *ptr_timestep;
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
-    int32_t nbins[MAX_DIM] = {*ptr_nbinx, *ptr_nbiny};
+    char* nbins[MAX_DIM] = {ptr_nbinx, ptr_nbiny};
     int32_t myid = *ptr_myid, rootid = *ptr_rootid;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;
@@ -470,7 +569,7 @@ void c_generate_and_output_histogram_3d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbinx, int32_t *ptr_nbiny, int32_t *ptr_nbinz,
+        char *ptr_nbinx, char *ptr_nbiny, char *ptr_nbinz,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
@@ -483,7 +582,7 @@ void c_generate_and_output_histogram_3d_(
     double timestep = *ptr_timestep;
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
-    int32_t nbins[MAX_DIM] = {*ptr_nbinx, *ptr_nbiny, *ptr_nbinz};
+    char* nbins[MAX_DIM] = {ptr_nbinx, ptr_nbiny, ptr_nbinz};
     int32_t myid = *ptr_myid, rootid = *ptr_rootid;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
     int32_t iconfig = *ptr_iconfig;

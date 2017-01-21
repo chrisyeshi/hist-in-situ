@@ -6,6 +6,7 @@
 #include <mpi.h>
 
 #define MAX_DIM 3
+#define MAX_NBINS 100
 
 typedef struct {
     int32_t ndims;
@@ -32,7 +33,7 @@ void c_generate_and_output_histogram_1d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbin,
+        char *ptr_nbin,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig);
 
@@ -45,7 +46,7 @@ void c_generate_and_output_histogram_2d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbinx, int32_t *ptr_nbiny,
+        char *ptr_nbinx, char *ptr_nbiny,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig);
 
@@ -58,7 +59,7 @@ void c_generate_and_output_histogram_3d_(
         double *ptr_timestep,
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
-        int32_t *ptr_nbinx, int32_t *ptr_nbiny, int32_t *ptr_nbinz,
+        char *ptr_nbinx, char *ptr_nbiny, char *ptr_nbinz,
         int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
         int32_t *ptr_iconfig);
 
@@ -83,6 +84,9 @@ Histogram frequencies_to_histogram(
 void adjust_range_by_methods(int32_t ndims, SamplingRegion samplingregion,
         char* methods[], double mins[], double maxs[], double adjmins[],
         double adjmaxs[]);
+
+void compute_nbins(int32_t ndims, SamplingRegion samplingregion, double mins[],
+        double maxs[], char* nbinstrs[], int32_t nbins[]);
 
 Histogram generate_histogram_from_sampling_region(
         int32_t ndims, SamplingRegion samplingregion, int32_t nbins[],
@@ -136,6 +140,6 @@ void generate_and_output_histogram(
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
-        int32_t nbins[], int32_t myid, int32_t iconfig);
+        char* nbins[], int32_t myid, int32_t iconfig);
 
 #endif // HISTOGRAM_H

@@ -13,7 +13,7 @@ module histogram_m
   integer, parameter :: limit = 10
   integer :: nHistConfigs
   integer, dimension(limit) :: ndim_hist
-  integer, dimension(limit,3) :: nbin_hist
+  character, dimension(limit,3) :: nbin_hist*30
   character, dimension(limit,3) :: vars_hist*30
   character, dimension(limit,3) :: methods_hist*30
   real*8, dimension(limit,3) :: mins_hist
@@ -72,29 +72,21 @@ module histogram_m
         endif
         nHistConfigs = nHistConfigs + 1
         ndim_hist(nHistConfigs) = ndim
-        ! read nBins per dimension
-        if (ndim == 1) then
-          read(io_inp, *) nbin_hist(nHistConfigs, 1)
-        elseif (ndim == 2) then
-          read(io_inp, *) nbin_hist(nHistConfigs, 1), nbin_hist(nHistConfigs, 2)
-        elseif (ndim == 3) then
-          read(io_inp, *) nbin_hist(nHistConfigs, 1), nbin_hist(nHistConfigs, 2), nbin_hist(nHistConfigs, 3)
-        endif
-        ! read variable names and their ranges
+        ! read variable names, number of bins, and their ranges
         if (ndim_hist(nHistConfigs) > 0) then
           read(io_inp, *) vars_hist(nHistConfigs, 1), &
-              methods_hist(nHistConfigs, 1), mins_hist(nHistConfigs, 1), &
-              maxs_hist(nHistConfigs, 1)
+              nbin_hist(nHistConfigs, 1), methods_hist(nHistConfigs, 1), &
+              mins_hist(nHistConfigs, 1), maxs_hist(nHistConfigs, 1)
         endif
         if (ndim_hist(nHistConfigs) > 1) then
           read(io_inp, *) vars_hist(nHistConfigs, 2), &
-              methods_hist(nHistConfigs, 2), mins_hist(nHistConfigs, 2), &
-              maxs_hist(nHistConfigs, 2)
+              nbin_hist(nHistConfigs, 2), methods_hist(nHistConfigs, 2), &
+              mins_hist(nHistConfigs, 2), maxs_hist(nHistConfigs, 2)
         endif
         if (ndim_hist(nHistConfigs) > 2) then
           read(io_inp, *) vars_hist(nHistConfigs, 3), &
-              methods_hist(nHistConfigs, 3), mins_hist(nHistConfigs, 3), &
-              maxs_hist(nHistConfigs, 3)
+              nbin_hist(nHistConfigs, 3), methods_hist(nHistConfigs, 3), &
+              mins_hist(nHistConfigs, 3), maxs_hist(nHistConfigs, 3)
         endif
       enddo
     endif
@@ -152,7 +144,7 @@ module histogram_m
     character, dimension(3) :: vars*30, methods*30
     character :: var*30
     integer :: nDim, iVar
-    integer, dimension(3) :: nbin
+    character, dimension(3) :: nbin*30
     real*8, allocatable :: data(:,:,:,:)
 
     nDim = ndim_hist(iConfig)
@@ -201,8 +193,8 @@ module histogram_m
     use reference_m, only: time_ref
     use runtime_m, only: time
     implicit none
-    integer, intent(in) :: io, nDim, nbin(:), iConfig
-    character, dimension(3), intent(in) :: methods*30
+    integer, intent(in) :: io, nDim, iConfig
+    character, dimension(3), intent(in) :: methods*30, nbin*30
     real*8, intent(in) :: data(:,:,:,:), mins(:), maxs(:)
     if (nDim == 1) then
       call c_generate_and_output_histogram_1d(data(:,:,:,1), &

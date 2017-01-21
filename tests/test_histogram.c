@@ -235,6 +235,79 @@ void test_adjust_range_by_methods() {
     free(samplingregion.valuearrays[2]);
 }
 
+void test_compute_nbins() {
+    char* nbinstrs[3];
+    int32_t nbins[3];
+    int32_t ngridx = 10, ngridy = 10, ngridz = 10;
+    int32_t ngrids = ngridx * ngridy * ngridz;
+    int32_t igrid, x, y, z;
+    double vala = 0.0, valb = 0.0, valc = 990.0;
+    double mins[3], maxs[3];
+    SamplingRegion samplingregion;
+    samplingregion.xbeg = 3;
+    samplingregion.xend = 8;
+    samplingregion.ybeg = 2;
+    samplingregion.yend = 4;
+    samplingregion.zbeg = 0;
+    samplingregion.zend = 10;
+    samplingregion.ngridx = ngridx;
+    samplingregion.ngridy = ngridy;
+    samplingregion.ngridz = ngridz;
+    samplingregion.ndims = 3;
+    samplingregion.valuearrays[0] = malloc(ngrids * sizeof(double));
+    samplingregion.valuearrays[1] = malloc(ngrids * sizeof(double));
+    samplingregion.valuearrays[2] = malloc(ngrids * sizeof(double));
+    for (z = samplingregion.zbeg; z < samplingregion.zend; ++z)
+    for (y = samplingregion.ybeg; y < samplingregion.yend; ++y)
+    for (x = samplingregion.xbeg; x < samplingregion.xend; ++x) {
+        igrid = x + y * ngridx + z * ngridy * ngridx;
+        samplingregion.valuearrays[0][igrid] = vala;
+        samplingregion.valuearrays[1][igrid] = valb;
+        samplingregion.valuearrays[2][igrid] = valc;
+        vala += 0.1;
+        valb += 1.0;
+        valc -= 10.0;
+    }
+    nbinstrs[0] = malloc(30 * sizeof(char));
+    nbinstrs[1] = malloc(30 * sizeof(char));
+    nbinstrs[2] = malloc(30 * sizeof(char));
+
+    mins[0] = 0.999; maxs[0] = 2.0;
+    mins[1] = 20.0; maxs[1] = 30.0;
+    mins[2] = 200.0; maxs[2] = 300.0;
+    strncpy(nbinstrs[0], "sturges", 7);
+    strncpy(nbinstrs[1], "freedman", 8);
+    strncpy(nbinstrs[2], "8\0", 2);
+    compute_nbins(
+            samplingregion.ndims, samplingregion, mins, maxs, nbinstrs, nbins);
+    // printf("nbins[0] = %d, nbins[1] = %d, and nbins[2] = %d\n", nbins[0], nbins[1], nbins[2]);
+    assert(nbins[0] == 5);
+    assert(nbins[1] == 2);
+    assert(nbins[2] == 8);
+
+    mins[0] = 0.0; maxs[0] = 0.0;
+    strncpy(nbinstrs[0], "sturges", 7);
+    compute_nbins(1, samplingregion, mins, maxs, nbinstrs, nbins);
+    assert(nbins[0] == 1);
+
+    mins[0] = 5.0; maxs[0] = 0.0;
+    strncpy(nbinstrs[0], "freedman", 8);
+    compute_nbins(1, samplingregion, mins, maxs, nbinstrs, nbins);
+    assert(nbins[0] == 1);
+
+    mins[0] = 0.999; maxs[0] = 2.0;
+    strncpy(nbinstrs[0], "incorrect", 9);
+    compute_nbins(1, samplingregion, mins, maxs, nbinstrs, nbins);
+    assert(nbins[0] == 2);
+
+    free(nbinstrs[0]);
+    free(nbinstrs[1]);
+    free(nbinstrs[2]);
+    free(samplingregion.valuearrays[0]);
+    free(samplingregion.valuearrays[1]);
+    free(samplingregion.valuearrays[2]);
+}
+
 void test_generate_histogram_from_sampling_region() {
     int32_t i, nbins[1];
     char* methods[1];
@@ -411,6 +484,7 @@ int main(void) {
     test_frequencies_to_histogram_3d_sparse();
     test_frequencies_to_histogram();
     test_adjust_range_by_methods();
+    test_compute_nbins();
     test_generate_histogram_from_sampling_region();
     test_write_histogram_meta();
     test_write_histogram_1d();
