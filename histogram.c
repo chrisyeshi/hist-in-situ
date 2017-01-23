@@ -166,7 +166,6 @@ void write_histogram_meta(
     fwrite(&nhistx, sizeof(int32_t), 1, outfile);
     fwrite(&nhisty, sizeof(int32_t), 1, outfile);
     fwrite(&nhistz, sizeof(int32_t), 1, outfile);
-    fwrite(nbins, sizeof(int32_t), ndims, outfile);
     fwrite(log_base, sizeof(double), ndims, outfile);
 }
 
@@ -175,6 +174,7 @@ void write_histogram(FILE* outfile, Histogram hist) {
     fwrite(&hist.issparse, sizeof(int32_t), 1, outfile);
     fwrite(hist.mins, sizeof(double), hist.ndims, outfile);
     fwrite(hist.maxs, sizeof(double), hist.ndims, outfile);
+    fwrite(hist.nbins, sizeof(int32_t), hist.ndims, outfile);
     fwrite(&hist.percentinrange, sizeof(double), 1, outfile);
     fwrite(&hist.nnonemptybins, sizeof(int32_t), 1, outfile);
     if (hist.issparse) {

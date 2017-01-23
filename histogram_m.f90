@@ -97,7 +97,7 @@ module histogram_m
     call mpi_bcast(nhz, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(nHistConfigs, 1, MPI_INTEGER, 0, gcomm, ierr)
     call mpi_bcast(ndim_hist, limit, MPI_INTEGER, 0, gcomm, ierr)
-    call mpi_bcast(nbin_hist, limit * 3, MPI_INTEGER, 0, gcomm, ierr)
+    call mpi_bcast(nbin_hist, limit * 3 * 30, MPI_CHARACTER, 0, gcomm, ierr)
     call mpi_bcast(vars_hist, limit * 3 * 30, MPI_CHARACTER, 0, gcomm, ierr)
     call mpi_bcast(methods_hist, limit * 3 * 30, MPI_CHARACTER, 0, gcomm, ierr)
     call mpi_bcast(mins_hist, limit * 3, MPI_REAL8, 0, gcomm, ierr)
