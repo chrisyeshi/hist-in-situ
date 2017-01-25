@@ -359,7 +359,6 @@ void test_write_histogram_meta() {
     fread(&nhistx, 1, sizeof(int32_t), read);
     fread(&nhisty, 1, sizeof(int32_t), read);
     fread(&nhistz, 1, sizeof(int32_t), read);
-    fread(nbins, ndims, sizeof(int32_t), read);
     fread(log_base, ndims, sizeof(double), read);
     fclose(read);
     assert(3 == ndims);
@@ -369,9 +368,6 @@ void test_write_histogram_meta() {
     assert(7 == nhistx);
     assert(8 == nhisty);
     assert(9 == nhistz);
-    assert(5 == nbins[0]);
-    assert(6 == nbins[1]);
-    assert(7 == nbins[2]);
     assert(fabs(0.2 - log_base[0]) < 0.0001);
     assert(fabs(0.3 - log_base[1]) < 0.0001);
     assert(fabs(0.4 - log_base[2]) < 0.0001);
@@ -400,6 +396,7 @@ void test_write_histogram_1d() {
     fread(&readhist.issparse, 1, sizeof(int32_t), read);
     fread(&readhist.mins[0], 1, sizeof(double), read);
     fread(&readhist.maxs[0], 1, sizeof(double), read);
+    fread(&readhist.nbins[0], 1, sizeof(int32_t), read);
     fread(&readhist.percentinrange, 1, sizeof(double), read);
     fread(&readhist.nnonemptybins, 1, sizeof(int32_t), read);
     fread(readhist.buffer, 5, sizeof(int32_t), read);
@@ -407,6 +404,7 @@ void test_write_histogram_1d() {
     assert(0 == readhist.issparse);
     assert(0.2 == readhist.mins[0]);
     assert(2.3 == readhist.maxs[0]);
+    assert(5 == readhist.nbins[0]);
     assert(0.63 == readhist.percentinrange);
     assert(3 == readhist.nnonemptybins);
     for (i = 0; i < 5; ++i)
@@ -442,6 +440,7 @@ void test_write_histogram_3d() {
     fread(&readhist.issparse, 1, sizeof(int32_t), read);
     fread(&readhist.mins[0], 3, sizeof(double), read);
     fread(&readhist.maxs[0], 3, sizeof(double), read);
+    fread(&readhist.nbins[0], 3, sizeof(int32_t), read);
     fread(&readhist.percentinrange, 1, sizeof(double), read);
     fread(&readhist.nnonemptybins, 1, sizeof(int32_t), read);
     fread(readhist.buffer, 8, sizeof(int32_t), read);
@@ -453,11 +452,147 @@ void test_write_histogram_3d() {
     assert(2.3 == readhist.maxs[0]);
     assert(2.4 == readhist.maxs[1]);
     assert(2.5 == readhist.maxs[2]);
+    assert(2 == readhist.nbins[0]);
+    assert(2 == readhist.nbins[1]);
+    assert(2 == readhist.nbins[2]);
     assert(0.63 == readhist.percentinrange);
     assert(3 == readhist.nnonemptybins);
     for (i = 0; i < 8; ++i)
         assert(writebuffer[i] == readbuffer[i]);
 }
+
+void test_serialize_domain_histograms() {
+    double log_base[] = {0.2};
+    char *buffer;
+    int32_t nbyte, ibyte, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, ndims;
+    double read_log_base[1];
+    Histogram writehists[2];
+    Histogram readhist1, readhist2;
+    int32_t writebuffer1[3] = {3, 4, 5}, writebuffer2[4] = {6, 7, 8, 9};
+    int32_t readbuffer1[3], readbuffer2[4];
+    // write histogram 1
+    writehists[0].ndims = 1;
+    writehists[0].buffer = writebuffer1;
+    writehists[0].issparse = 0;
+    writehists[0].nbins[0] = 3;
+    writehists[0].nnonemptybins = 3;
+    writehists[0].mins[0] = 0.2;
+    writehists[0].mins[1] = 0.3;
+    writehists[0].mins[2] = 0.4;
+    writehists[0].maxs[0] = 2.2;
+    writehists[0].maxs[1] = 2.3;
+    writehists[0].maxs[2] = 2.4;
+    writehists[0].percentinrange = 0.63;
+    // write histogram 2
+    writehists[1].ndims = 1;
+    writehists[1].buffer = writebuffer2;
+    writehists[1].issparse = 0;
+    writehists[1].nbins[0] = 4;
+    writehists[1].nnonemptybins = 4;
+    writehists[1].mins[0] = 0.5;
+    writehists[1].mins[1] = 0.6;
+    writehists[1].mins[2] = 0.7;
+    writehists[1].maxs[0] = 2.5;
+    writehists[1].maxs[1] = 2.6;
+    writehists[1].maxs[2] = 2.7;
+    writehists[1].percentinrange = 0.96;
+    serialize_domain_histograms(4, 2, 2, 2, 1, 1, 1, log_base, writehists, 2,
+            &buffer, &nbyte);
+    ibyte = 0;
+    // read domain meta
+    memcpy(&ndims, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&ngridx, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&ngridy, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&ngridz, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&nhistx, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&nhisty, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(&nhistz, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(read_log_base, buffer + ibyte, sizeof(double) * ndims); ibyte += sizeof(double) * ndims;
+    // read histogram 1
+    readhist1.buffer = readbuffer1;
+    readhist1.ndims = ndims;
+    memcpy(&readhist1.issparse, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(readhist1.mins, buffer + ibyte, sizeof(double) * ndims); ibyte += sizeof(double) * ndims;
+    memcpy(readhist1.maxs, buffer + ibyte, sizeof(double) * ndims); ibyte += sizeof(double) * ndims;
+    memcpy(readhist1.nbins, buffer + ibyte, sizeof(int32_t) * ndims); ibyte += sizeof(int32_t) * ndims;
+    memcpy(&readhist1.percentinrange, buffer + ibyte, sizeof(double)); ibyte += sizeof(double);
+    memcpy(&readhist1.nnonemptybins, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(readhist1.buffer, buffer + ibyte, sizeof(int32_t) * readhist1.nbins[0]); ibyte += sizeof(int32_t) * readhist1.nbins[0];
+    // read histogram 2
+    readhist2.buffer = readbuffer2;
+    readhist2.ndims = ndims;
+    memcpy(&readhist2.issparse, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(readhist2.mins, buffer + ibyte, sizeof(double) * ndims); ibyte += sizeof(double) * ndims;
+    memcpy(readhist2.maxs, buffer + ibyte, sizeof(double) * ndims); ibyte += sizeof(double) * ndims;
+    memcpy(readhist2.nbins, buffer + ibyte, sizeof(int32_t) * ndims); ibyte += sizeof(int32_t) * ndims;
+    memcpy(&readhist2.percentinrange, buffer + ibyte, sizeof(double)); ibyte += sizeof(double);
+    memcpy(&readhist2.nnonemptybins, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(readhist2.buffer, buffer + ibyte, sizeof(int32_t) * readhist2.nbins[0]); ibyte += sizeof(int32_t) * readhist2.nbins[0];
+    // assert meta
+    assert(ndims == 1);
+    assert(ngridx == 4);
+    assert(ngridy == 2);
+    assert(ngridz == 2);
+    assert(nhistx == 2);
+    assert(nhisty == 1);
+    assert(nhistz == 1);
+    assert(log_base[0] == read_log_base[0]);
+    // assert histogram 1
+    assert(writehists[0].ndims == readhist1.ndims);
+    assert(writehists[0].issparse == readhist1.issparse);
+    assert(writehists[0].mins[0] == readhist1.mins[0]);
+    assert(writehists[0].maxs[0] == readhist1.maxs[0]);
+    assert(writehists[0].nbins[0] == readhist1.nbins[0]);
+    assert(writehists[0].percentinrange == readhist1.percentinrange);
+    assert(writehists[0].nnonemptybins == readhist1.nnonemptybins);
+    assert(writehists[0].buffer[0] == readhist1.buffer[0]);
+    assert(writehists[0].buffer[1] == readhist1.buffer[1]);
+    assert(writehists[0].buffer[2] == readhist1.buffer[2]);
+    // assert histogram 2
+    assert(writehists[1].ndims == readhist2.ndims);
+    assert(writehists[1].issparse == readhist2.issparse);
+    assert(writehists[1].mins[0] == readhist2.mins[0]);
+    assert(writehists[1].maxs[0] == readhist2.maxs[0]);
+    assert(writehists[1].nbins[0] == readhist2.nbins[0]);
+    assert(writehists[1].percentinrange == readhist2.percentinrange);
+    assert(writehists[1].nnonemptybins == readhist2.nnonemptybins);
+    assert(writehists[1].buffer[0] == readhist2.buffer[0]);
+    assert(writehists[1].buffer[1] == readhist2.buffer[1]);
+    assert(writehists[1].buffer[2] == readhist2.buffer[2]);
+    assert(writehists[1].buffer[3] == readhist2.buffer[3]);
+    free(buffer);
+}
+
+// void test_write_domain_histograms() {
+//     FILE* file, *read;
+//     int32_t ndims, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz;
+//     int32_t nbins[] = {5, 6, 7};
+//     double log_base[] = {0.2, 0.3, 0.4};
+//     file = fopen("testfile.bin", "wb");
+
+//     write_histogram_meta(file, 4, 5, 6, 7, 8, 9, 3, nbins, log_base);
+//     fclose(file);
+//     read = fopen("testfile.bin", "rb");
+//     fread(&ndims, 1, sizeof(int32_t), read);
+//     fread(&ngridx, 1, sizeof(int32_t), read);
+//     fread(&ngridy, 1, sizeof(int32_t), read);
+//     fread(&ngridz, 1, sizeof(int32_t), read);
+//     fread(&nhistx, 1, sizeof(int32_t), read);
+//     fread(&nhisty, 1, sizeof(int32_t), read);
+//     fread(&nhistz, 1, sizeof(int32_t), read);
+//     fread(log_base, ndims, sizeof(double), read);
+//     fclose(read);
+//     assert(3 == ndims);
+//     assert(4 == ngridx);
+//     assert(5 == ngridy);
+//     assert(6 == ngridz);
+//     assert(7 == nhistx);
+//     assert(8 == nhisty);
+//     assert(9 == nhistz);
+//     assert(fabs(0.2 - log_base[0]) < 0.0001);
+//     assert(fabs(0.3 - log_base[1]) < 0.0001);
+//     assert(fabs(0.4 - log_base[2]) < 0.0001);
+// }
 
 void test_ids_to_flat() {
     int32_t dims[] = {5, 6, 7};
@@ -489,8 +624,8 @@ int main(void) {
     test_write_histogram_meta();
     test_write_histogram_1d();
     test_write_histogram_3d();
+    test_serialize_domain_histograms();
     test_ids_to_flat();
     test_values_to_bin_index();
-
     return 0;
 }

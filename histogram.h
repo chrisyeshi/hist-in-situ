@@ -34,8 +34,8 @@ void c_generate_and_output_histogram_1d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbin,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig);
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig);
 
 void c_generate_and_output_histogram_2d_(
         double *ptr_values_x, double *ptr_values_y,
@@ -47,8 +47,8 @@ void c_generate_and_output_histogram_2d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbinx, char *ptr_nbiny,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig);
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig);
 
 void c_generate_and_output_histogram_3d_(
         double *ptr_values_x, double *ptr_values_y, double *ptr_values_z,
@@ -60,8 +60,8 @@ void c_generate_and_output_histogram_3d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbinx, char *ptr_nbiny, char *ptr_nbinz,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig);
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig);
 
 int32_t total_number_of_bins(int32_t ndims, int32_t nbins[]);
 
@@ -113,14 +113,35 @@ void write_histogram_meta(
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, int32_t nbins[], double log_base[]);
 
+void serialize_histogram_meta(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[], char** buffer, int32_t* nbyte);
+
 void write_histogram(FILE* outfile, Histogram hist);
+
+void serialize_histogram(Histogram hist, char** buffer, int32_t *nbyte);
 
 void write_domain_histograms(
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, int32_t nbins[], double log_base[],
         Histogram hists[], int32_t nhists,
-        double timestep, int32_t myid, int32_t iconfig);
+        double timestep, int32_t yid, int32_t rootid, MPI_Comm comm,
+        int32_t xzid, int32_t iconfig);
+
+void serialize_domain_histograms(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[],
+        Histogram hists[], int32_t nhists, char** buffer, int32_t* nbyte);
+
+void write_ycolumn_histograms(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[], Histogram hists[], int32_t nhists,
+        double timestep, int32_t yid, int32_t rootid, int32_t ypes,
+        MPI_Comm comm, int32_t xzid, int32_t iconfig);
 
 SamplingRegion construct_sampling_region(
         double* valuearrays[], int32_t ndims,
@@ -140,6 +161,7 @@ void generate_and_output_histogram(
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
-        char* nbins[], int32_t myid, int32_t iconfig);
+        char* nbins[], int32_t myid, int32_t rootid, int32_t ypes,
+        MPI_Comm comm, int32_t xzid, int32_t iconfig);
 
 #endif // HISTOGRAM_H

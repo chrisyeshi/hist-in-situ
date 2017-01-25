@@ -188,7 +188,7 @@ module histogram_m
 
   ! generate and output a histogram configuration of n-dimensional
   subroutine generate_and_output_histogram_nd( io, nDim, data, methods, mins, maxs, nbin, iConfig )
-    use topology_m, only: myid, ycomm
+    use topology_m, only: yid, xz_id, ypes, ycomm
     use param_m, only: nx, ny, nz
     use reference_m, only: time_ref
     use runtime_m, only: time
@@ -206,7 +206,7 @@ module histogram_m
                                               nx, ny, nz, &
                                               nhx, nhy, nhz, &
                                               nbin(1), &
-                                              myid, 0, ycomm, &
+                                              yid, 0, ypes, ycomm, xz_id, &
                                               iConfig)
     elseif (nDim == 2) then
       call c_generate_and_output_histogram_2d(data(:,:,:,1), data(:,:,:,2), &
@@ -218,7 +218,7 @@ module histogram_m
                                               nx, ny, nz, &
                                               nhx, nhy, nhz, &
                                               nbin(1), nbin(2), &
-                                              myid, 0, ycomm, &
+                                              yid, 0, ypes, ycomm, xz_id, &
                                               iConfig)
     elseif (nDim == 3) then
       call c_generate_and_output_histogram_3d(data(:,:,:,1), data(:,:,:,2), data(:,:,:,3), &
@@ -230,7 +230,7 @@ module histogram_m
                                               nx, ny, nz, &
                                               nhx, nhy, nhz, &
                                               nbin(1), nbin(2), nbin(3), &
-                                              myid, 0, ycomm, &
+                                              yid, 0, ypes, ycomm, xz_id, &
                                               iConfig)
     endif
 

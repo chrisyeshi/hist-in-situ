@@ -159,29 +159,94 @@ void write_histogram_meta(
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, int32_t nbins[], double log_base[]) {
-    fwrite(&ndims, sizeof(int32_t), 1, outfile);
-    fwrite(&ngridx, sizeof(int32_t), 1, outfile);
-    fwrite(&ngridy, sizeof(int32_t), 1, outfile);
-    fwrite(&ngridz, sizeof(int32_t), 1, outfile);
-    fwrite(&nhistx, sizeof(int32_t), 1, outfile);
-    fwrite(&nhisty, sizeof(int32_t), 1, outfile);
-    fwrite(&nhistz, sizeof(int32_t), 1, outfile);
-    fwrite(log_base, sizeof(double), ndims, outfile);
+    char* buffer;
+    int32_t nbyte;
+    serialize_histogram_meta(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
+            ndims, log_base, &buffer, &nbyte);
+    fwrite(buffer, sizeof(char), nbyte, outfile);
+    free(buffer);
+
+    // fwrite(&ndims, sizeof(int32_t), 1, outfile);
+    // fwrite(&ngridx, sizeof(int32_t), 1, outfile);
+    // fwrite(&ngridy, sizeof(int32_t), 1, outfile);
+    // fwrite(&ngridz, sizeof(int32_t), 1, outfile);
+    // fwrite(&nhistx, sizeof(int32_t), 1, outfile);
+    // fwrite(&nhisty, sizeof(int32_t), 1, outfile);
+    // fwrite(&nhistz, sizeof(int32_t), 1, outfile);
+    // fwrite(log_base, sizeof(double), ndims, outfile);
+}
+
+void serialize_histogram_meta(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[], char** buffer, int32_t* nbyte) {
+    int32_t ibyte;
+    *buffer = malloc(7 * sizeof(int32_t) + ndims * sizeof(double));
+    *nbyte = 7 * sizeof(int32_t) + ndims * sizeof(double);
+    ibyte = 0;
+    memcpy(*buffer, &ndims, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &ngridx, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &ngridy, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &ngridz, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &nhistx, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &nhisty, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, &nhistz, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, log_base, sizeof(double) * ndims);
 }
 
 void write_histogram(FILE* outfile, Histogram hist) {
-    int32_t totalbin;
-    fwrite(&hist.issparse, sizeof(int32_t), 1, outfile);
-    fwrite(hist.mins, sizeof(double), hist.ndims, outfile);
-    fwrite(hist.maxs, sizeof(double), hist.ndims, outfile);
-    fwrite(hist.nbins, sizeof(int32_t), hist.ndims, outfile);
-    fwrite(&hist.percentinrange, sizeof(double), 1, outfile);
-    fwrite(&hist.nnonemptybins, sizeof(int32_t), 1, outfile);
+    char* buffer;
+    int32_t nbyte;
+    serialize_histogram(hist, &buffer, &nbyte);
+    fwrite(buffer, sizeof(char), nbyte, outfile);
+    free(buffer);
+
+    // int32_t totalbin;
+    // fwrite(&hist.issparse, sizeof(int32_t), 1, outfile);
+    // fwrite(hist.mins, sizeof(double), hist.ndims, outfile);
+    // fwrite(hist.maxs, sizeof(double), hist.ndims, outfile);
+    // fwrite(hist.nbins, sizeof(int32_t), hist.ndims, outfile);
+    // fwrite(&hist.percentinrange, sizeof(double), 1, outfile);
+    // fwrite(&hist.nnonemptybins, sizeof(int32_t), 1, outfile);
+    // if (hist.issparse) {
+    //     fwrite(hist.buffer, sizeof(int32_t), 2 * hist.nnonemptybins, outfile);
+    // } else {
+    //     totalbin = total_number_of_bins(hist.ndims, hist.nbins);
+    //     fwrite(hist.buffer, sizeof(int32_t), totalbin, outfile);
+    // }
+}
+
+void serialize_histogram(Histogram hist, char** buffer, int32_t *nbyte) {
+    int32_t totalbin, ibyte;
+    totalbin = total_number_of_bins(hist.ndims, hist.nbins);
     if (hist.issparse) {
-        fwrite(hist.buffer, sizeof(int32_t), 2 * hist.nnonemptybins, outfile);
+        *nbyte = 2 * sizeof(int32_t) +
+                2 * sizeof(double) * hist.ndims +
+                sizeof(int32_t) * hist.ndims +
+                sizeof(double) +
+                sizeof(int32_t) * 2 * hist.nnonemptybins;
+        *buffer = malloc(*nbyte);
     } else {
-        totalbin = total_number_of_bins(hist.ndims, hist.nbins);
-        fwrite(hist.buffer, sizeof(int32_t), totalbin, outfile);
+        *nbyte = 2 * sizeof(int32_t) +
+                2 * sizeof(double) * hist.ndims +
+                sizeof(int32_t) * hist.ndims +
+                sizeof(double) +
+                sizeof(int32_t) * totalbin;
+        *buffer = malloc(*nbyte);
+    }
+    ibyte = 0;
+    memcpy(*buffer, &hist.issparse, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, hist.mins, sizeof(double) * hist.ndims); ibyte += sizeof(double) * hist.ndims;
+    memcpy(*buffer + ibyte, hist.maxs, sizeof(double) * hist.ndims); ibyte += sizeof(double) * hist.ndims;
+    memcpy(*buffer + ibyte, hist.nbins, sizeof(int32_t) * hist.ndims); ibyte += sizeof(int32_t) * hist.ndims;
+    memcpy(*buffer + ibyte, &hist.percentinrange, sizeof(double)); ibyte += sizeof(double);
+    memcpy(*buffer + ibyte, &hist.nnonemptybins, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    if (hist.issparse) {
+        memcpy(*buffer + ibyte, hist.buffer, sizeof(int32_t) * 2 * hist.nnonemptybins);
+        assert(*nbyte == ibyte + sizeof(int32_t) * 2 * hist.nnonemptybins);
+    } else {
+        memcpy(*buffer + ibyte, hist.buffer, sizeof(int32_t) * totalbin);
+        assert(*nbyte == ibyte + sizeof(int32_t) * totalbin);
     }
 }
 
@@ -190,18 +255,171 @@ void write_domain_histograms(
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, int32_t nbins[], double log_base[],
         Histogram hists[], int32_t nhists,
-        double timestep, int32_t myid, int32_t iconfig) {
-    int32_t ihist;
+        double timestep, int32_t yid, int32_t rootid, MPI_Comm comm,
+        int32_t xzid, int32_t iconfig) {
+    char* buffer;
+    int32_t nbyte, ihist;
     char filename[100];
     FILE* outfile;
-    // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, myid);
-    sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig, myid);
+    // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
+    sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
+            yid);
     outfile = fopen(filename, "wb");
-    write_histogram_meta(
-            outfile, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, ndims, nbins, log_base);
-    for (ihist = 0; ihist < nhists; ++ihist)
-        write_histogram(outfile, hists[ihist]);
+    serialize_domain_histograms(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
+            ndims, log_base, hists, nhists, &buffer, &nbyte);
+    fwrite(buffer, sizeof(char), nbyte, outfile);
+    free(buffer);
     fclose(outfile);
+
+    // int32_t ihist;
+    // char filename[100];
+    // FILE* outfile;
+    // // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
+    // sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
+    //         yid);
+    // outfile = fopen(filename, "wb");
+    // write_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
+    //         nhistz, ndims, nbins, log_base);
+    // for (ihist = 0; ihist < nhists; ++ihist)
+    //     write_histogram(outfile, hists[ihist]);
+    // fclose(outfile);
+}
+
+void serialize_domain_histograms(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[],
+        Histogram hists[], int32_t nhists, char** buffer, int32_t* nbyte) {
+    char *metabuffer, **histbuffers;
+    int32_t metanbyte, *histnbytes, ihist, histnbyte;
+    serialize_histogram_meta(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
+            ndims, log_base, &metabuffer, &metanbyte);
+    histnbytes = malloc(nhists * sizeof(int32_t));
+    histbuffers = malloc(nhists * sizeof(char*));
+    for (ihist = 0; ihist < nhists; ++ihist) {
+        serialize_histogram(
+                hists[ihist], &histbuffers[ihist], &histnbytes[ihist]);
+    }
+    histnbyte = 0;
+    for (ihist = 0; ihist < nhists; ++ihist) {
+        histnbyte += histnbytes[ihist];
+    }
+    *buffer = malloc(metanbyte + histnbyte);
+    memcpy(*buffer, metabuffer, metanbyte);
+    *nbyte = metanbyte;
+    for (ihist = 0; ihist < nhists; ++ihist) {
+        memcpy(*buffer + *nbyte, histbuffers[ihist], histnbytes[ihist]);
+        *nbyte += histnbytes[ihist];
+    }
+    // free memory
+    for (ihist = 0; ihist < nhists; ++ihist) {
+        free(histbuffers[ihist]);
+    }
+    free(histbuffers);
+    free(metabuffer);
+    free(histnbytes);
+}
+
+void write_ycolumn_histograms(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[], Histogram hists[], int32_t nhists,
+        double timestep, int32_t yid, int32_t rootid, int32_t ypes,
+        MPI_Comm comm, int32_t xzid, int32_t iconfig) {
+    int32_t ipes, domainnbyte, *domainnbytes, globalnbyte = 0, *displs;
+    char filename[100], *domainbuffer, *globalbuffer;
+    FILE* outfile;
+    // serialize domain histograms
+    serialize_domain_histograms(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
+            ndims, log_base, hists, nhists, &domainbuffer, &domainnbyte);
+    // merge histograms in the y column
+    if (yid == rootid)
+        domainnbytes = malloc(ypes * sizeof(int32_t));
+    MPI_Gather(
+            &domainnbyte, 1, MPI_INT, domainnbytes, 1, MPI_INT, rootid, comm);
+    printf("yid = %d and rootid = %d\n", yid, rootid);
+    if (yid == rootid) {
+        displs = malloc(ypes * sizeof(int32_t));
+        for (ipes = 0; ipes < ypes; ++ipes) {
+            displs[ipes] = globalnbyte;
+            printf("%d: domainnbytes[%d] = %d\n", yid, ipes, domainnbytes[ipes]);
+            globalnbyte += domainnbytes[ipes];
+        }
+    }
+    printf("%d: globalnbyte = %d\n", yid, globalnbyte);
+    globalbuffer = malloc(sizeof(char) * globalnbyte);
+    MPI_Gatherv(domainbuffer, domainnbyte, MPI_CHAR, globalbuffer, domainnbytes,
+            displs, MPI_CHAR, rootid, comm);
+    printf("%d: 3\n", yid);
+    // write to file
+    if (yid == rootid) {
+        // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
+        sprintf(filename, "../data/tracer-%.4E/pdfs-ycolumn-%03d.%05d", timestep,
+                iconfig, xzid);
+        outfile = fopen(filename, "wb");
+        fwrite((void*)globalbuffer, sizeof(char), globalnbyte, outfile);
+        fclose(outfile);
+    }
+    printf("%d: 4\n", yid);
+    // clean up memeory
+    if (yid == rootid) {
+        free(displs);
+        free(domainnbytes);
+    }
+    free(domainbuffer);
+    free(globalbuffer);
+
+    // // merge histograms in the domain into a buffer
+    // buffers = malloc(nhists * sizeof(char*));
+    // nbytes = malloc(nhists * sizeof(int32_t));
+    // serialize_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
+    //          nhistz, ndims, log_base, buffermeta, &nbytemeta);
+    // for (ihist = 0; ihist < nhists; ++ihist)
+    //     serialize_histogram(hists[ihist], buffer[ihist], nbytes);
+    // nbyte += nbytemeta;
+    // for (ihist = 0; ihist < nhists; ++ihist)
+    //     nbyte += nbytes[ihist];
+    // buffer = malloc(nbyte);
+    // memcpy(buffer, buffermeta, nbytemeta);
+    // free(buffermeta);
+    // ibyte += nbytemeta;
+    // for (ihist = 0; ihist < nhists; ++ihist) {
+    //     memcpy(buffer + ibyte, buffers[ihist], nbytes[ihist]);
+    //     ibyte += nbytes[ihist];
+    //     free(buffers[ihist]);
+    // }
+    // assert(nbyte == ibyte);
+    // free(buffers);
+    // // compute the total number of bytes for the global buffer
+    // if (yid = rootid)
+    //     nbytesg = malloc(nhists * sizeof(int32_t));
+    // MPI_Gather(&nbyte, 1, MPI_INT, nbytesg, 1, MPI_INT, rootid, comm);
+    // if (yid == rootid) {
+    //     displs = malloc(nhists * sizeof(int32_t));
+    //     for (ihist = 0; ihist < nhists; ++ihist) {
+    //         displs[ihist] = nbyteg;
+    //         nbyteg += nbytesg[ihist];
+    //     }
+    //     bufferg = malloc(nbyteg);
+    // }
+    // MPI_Gatherv(buffer, nbyte, MPI_CHAR, bufferg, nbytesg, displs, MPI_CHAR, rootid, comm);
+    // // clean up the buffers
+    // free(buffer);
+    // if (yid == rootid) {
+    //     free(displs);
+    //     free(nbytesg);
+    //     // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
+    //     sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
+    //             xzid);
+    //     outfile = fopen(filename, "wb");
+    //     fwrite((void*)bufferg, sizeof(char), nbyteg, outfile);
+    //     // write_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
+    //     //         nhistz, ndims, nbins, log_base);
+    //     // for (ihist = 0; ihist < nhists; ++ihist)
+    //     //     write_histogram(outfile, hists[ihist]);
+    //     fclose(outfile);
+    //     free(bufferg);
+    // }
 }
 
 SamplingRegion construct_sampling_region(
@@ -462,7 +680,8 @@ void generate_and_output_histogram(
         int32_t ndims,
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
-        char* nbinstrs[], int32_t myid, int32_t iconfig) {
+        char* nbinstrs[], int32_t yid, int32_t rootid, int32_t ypes,
+        MPI_Comm comm, int32_t xzid, int32_t iconfig) {
     // declare variables
     int32_t nhists = nhistx * nhisty * nhistz;
     int32_t ihist, ihistx, ihisty, ihistz;
@@ -491,10 +710,10 @@ void generate_and_output_histogram(
     print_domain_histograms(
             ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
             ndims, nbins, log_bases, hists, nhists);
-    write_domain_histograms(
+    write_ycolumn_histograms(
             ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
-            ndims, nbins, log_bases, hists, nhists, timestep,
-            myid, iconfig);
+            ndims, log_bases, hists, nhists, timestep,
+            yid, rootid, ypes, comm, xzid, iconfig);
     // deallocate histograms
     for (ihist = 0; ihist < nhists; ++ihist)
         deallocate_histogram(hists[ihist]);
@@ -510,8 +729,8 @@ void c_generate_and_output_histogram_1d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbin,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig) {
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
     double *values = ptr_values, log_base = *ptr_log_base;
     char *method = ptr_method;
@@ -520,13 +739,14 @@ void c_generate_and_output_histogram_1d_(
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
     char *nbins = ptr_nbin;
-    int32_t myid = *ptr_myid, rootid = *ptr_rootid;
+    int32_t yid = *ptr_yid, rootid = *ptr_rootid, ypes = *ptr_ypes;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
+    int32_t xzid = *ptr_xzid;
     int32_t iconfig = *ptr_iconfig;
     // generate and output
     generate_and_output_histogram(&values, &log_base, &method, &minimum,
             &maximum, timestep, 1, ngridx, ngridy, ngridz, nhistx, nhisty,
-            nhistz, &nbins, myid, iconfig);
+            nhistz, &nbins, yid, rootid, ypes, comm, xzid, iconfig);
 }
 
 void c_generate_and_output_histogram_2d_(
@@ -539,8 +759,8 @@ void c_generate_and_output_histogram_2d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbinx, char *ptr_nbiny,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig) {
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
     double* values[MAX_DIM] = {ptr_values_x, ptr_values_y};
     double log_bases[MAX_DIM] = {*ptr_log_base_x, *ptr_log_base_y};
@@ -551,13 +771,14 @@ void c_generate_and_output_histogram_2d_(
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
     char* nbins[MAX_DIM] = {ptr_nbinx, ptr_nbiny};
-    int32_t myid = *ptr_myid, rootid = *ptr_rootid;
+    int32_t yid = *ptr_yid, rootid = *ptr_rootid, ypes = *ptr_ypes;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
+    int32_t xzid = *ptr_xzid;
     int32_t iconfig = *ptr_iconfig;
     // generate and output
     generate_and_output_histogram(values, log_bases, methods, mins, maxs,
             timestep, 2, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins,
-            myid, iconfig);
+            yid, rootid, ypes, comm, xzid, iconfig);
 }
 
 void c_generate_and_output_histogram_3d_(
@@ -570,8 +791,8 @@ void c_generate_and_output_histogram_3d_(
         int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
         int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
         char *ptr_nbinx, char *ptr_nbiny, char *ptr_nbinz,
-        int32_t *ptr_myid, int32_t *ptr_rootid, MPI_Fint *ptr_comm,
-        int32_t *ptr_iconfig) {
+        int32_t *ptr_yid, int32_t *ptr_rootid, int32_t *ptr_ypes,
+        MPI_Fint *ptr_comm, int32_t *ptr_xzid, int32_t *ptr_iconfig) {
     // convert from pointers to actual input arguments
     double* values[MAX_DIM] = {ptr_values_x, ptr_values_y, ptr_values_z};
     double log_bases[MAX_DIM] =
@@ -583,11 +804,12 @@ void c_generate_and_output_histogram_3d_(
     int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
     int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
     char* nbins[MAX_DIM] = {ptr_nbinx, ptr_nbiny, ptr_nbinz};
-    int32_t myid = *ptr_myid, rootid = *ptr_rootid;
+    int32_t yid = *ptr_yid, rootid = *ptr_rootid, ypes = *ptr_ypes;
     MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
+    int32_t xzid = *ptr_xzid;
     int32_t iconfig = *ptr_iconfig;
     // generate and output
     generate_and_output_histogram(values, log_bases, methods, mins, maxs,
             timestep, 3, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins,
-            myid, iconfig);
+            yid, rootid, ypes, comm, xzid, iconfig);
 }
