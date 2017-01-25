@@ -1,3 +1,9 @@
+module chemkin_m
+    implicit none
+    integer :: n_species = 4
+    character*16, dimension(4) :: species_name
+end module chemkin_m
+
 module variables_m
   implicit none
   real*8, dimension(12,12,12,4,1) :: q

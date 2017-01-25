@@ -5,15 +5,24 @@ program histogram
   use profiler_m
   use variables_m
   use tracer_m
+  use chemkin_m
 
   ! initialize some testing data
   integer :: x, y, z
+  species_name(1) = "H1"
+  species_name(2) = "HE2"
+  species_name(3) = "HER3"
+  species_name(4) = "HERE4"
   do x = 1, 12
     do y = 1, 12
       do z = 1, 12
         u(x,y,z,1) = x
         u(x,y,z,2) = y
         u(x,y,z,3) = z
+        yspecies(x,y,z,1) = 100.0
+        yspecies(x,y,z,2) = 200.0
+        yspecies(x,y,z,3) = 300.0
+        yspecies(x,y,z,4) = 400.0
       enddo
     enddo
   end do

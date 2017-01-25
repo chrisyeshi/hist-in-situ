@@ -165,10 +165,12 @@ module histogram_m
   ! helper function to map variable names to actual variables
   subroutine mapStrToVar( io, str, ret )
     use variables_m
+    use chemkin_m, only: n_species, species_name
     implicit none
     integer, intent(in) :: io
     character, intent(in) :: str*30
     real*8, intent(out) :: ret(:,:,:)
+    integer ispecies
 
     ! TODO: also map the variables in chem.asc
     if (str == 'xvel') then
@@ -184,6 +186,11 @@ module histogram_m
     elseif (str == 'temp') then
       ret = temp
     endif
+    do ispecies=1,n_species
+      if (species_name(ispecies) == str) then
+        ret = yspecies(:,:,:,ispecies)
+      end if
+    enddo
   end subroutine mapStrToVar
 
   ! generate and output a histogram configuration of n-dimensional

@@ -22,11 +22,11 @@ percent_range     - the range is specified in terms of the number of samples,
                     the intermediate bins are evenly distributed
 ================================================================================
 3                 - histogram dimension
-temp sturges range 0.0 0.1        - varname, nBins, rangemethod, min, max
-pressure sturges range 0.1 0.9
-volumn sturges range 0.1 0.9
+H1 sturges normalized_range 0.0 0.1        - varname, nBins, rangemethod, min, max
+HE2 sturges normalized_range 0.1 0.9
+HER3 sturges normalized_range 0.1 0.9
 2                 - histogram dimension
-volum freedman normalized_range 0.1 0.9
-xvel freedman normalized_range 0.1 0.9
+HERE4 freedman normalized_range 0.1 0.9
+xvel freedman range 0.1 0.9
 1                 - histogram dimension
 yvel 6 percent_range 0.1 0.9
