@@ -21,6 +21,21 @@ module histogram_m
 
   contains
 
+  subroutine mpi_make_directory(dirname)
+    use topology_m
+    implicit none
+    character(len=*), intent(in) :: dirname
+    if(myid == 0) then
+#ifdef SYSTEMCALLWONTWORK
+      call makedirectory(trim(dirname)//char(0))
+#else
+      call execute_command('mkdir -p'//trim(dirname))
+#endif
+    end if
+    ! All processes need to wait for the directory to be created
+    call MPI_Barrier(gcomm, ierr)
+  end subroutine mpi_make_directory
+
   ! initialize_histogram
   subroutine initialize_histogram( io )
     use topology_m

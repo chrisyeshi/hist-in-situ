@@ -2,7 +2,7 @@ module tracer_m
   implicit none
   private
   public sort_by_histograms_and_output_offsets, write_sorted_tracer_savefile, &
-      fill, ssn, age, dob, state, loc
+      fill, ssn, age, dob, state, loc, trace_save_fctr
 
   integer, parameter :: ARRAY_SIZE = 1000
   integer :: fill = 0
@@ -11,6 +11,7 @@ module tracer_m
   real, dimension(ARRAY_SIZE) :: dob
   integer, dimension(ARRAY_SIZE) :: state
   real, dimension(ARRAY_SIZE, 3) :: loc
+  real trace_save_fctr
 
   contains
 

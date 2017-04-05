@@ -28,7 +28,7 @@ program histogram
   end do
 
   ! make data directory for output
-  call execute_command_line('mkdir -p ../data/tracer-0.0000E+00/')
+  call execute_command_line('mkdir -p ../data_pdf/pdf-0.0000E+00/')
 
   ! initialize MPI
   call MPI_INIT( ierr )
@@ -37,7 +37,7 @@ program histogram
   !---------------------------------------------------
   ! initialization block in solve_driver
   call initialize_histogram( 6 )
-  call profile_clear()
+  ! call profile_clear()
   !---------------------------------------------------
 
   !---------------------------------------------------
@@ -48,23 +48,20 @@ program histogram
   !---------------------------------------------------
   ! within the simulation loop
   ! do while (i_time < i_time_end)
-    call profile_start("simulation")
+    ! call profile_start("simulation")
     ! integrate()
-    call profile_start("histogram")
+    ! call profile_start("histogram")
     call generate_and_output_histograms( 6 )
-    call profile_pause("histogram")
-    call profile_start("tracer")
-    call write_sorted_tracer_savefile( 6 )
-    call profile_pause("tracer")
+    ! call profile_pause("histogram")
     ! other tasks within the simulation loop
-    call profile_pause("simulation")
-    call profile_mpi_advance()
+    ! call profile_pause("simulation")
+    ! call profile_mpi_advance()
   ! enddo
   !---------------------------------------------------
 
   !---------------------------------------------------
   ! profiler output
-  call profile_mpi_appendfile()
+  ! call profile_mpi_appendfile()
 
   call MPI_FINALIZE( ierr )
 end program histogram

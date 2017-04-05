@@ -11,6 +11,8 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+static char dirpre[100] = "../data_pdf/pdf-";
+
 /// TODO: change histogram dimension to a, b, c
 
 #define PRINT_HISTOGRAM
@@ -261,28 +263,15 @@ void write_domain_histograms(
     int32_t nbyte, ihist;
     char filename[100];
     FILE* outfile;
-    // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
-    sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
-            yid);
+    sprintf(filename, "%s%.4E/pdfs-%03d.%05d", dirpre, timestep, iconfig, yid);
+    // sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
+            // yid);
     outfile = fopen(filename, "wb");
     serialize_domain_histograms(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
             ndims, log_base, hists, nhists, &buffer, &nbyte);
     fwrite(buffer, sizeof(char), nbyte, outfile);
     free(buffer);
     fclose(outfile);
-
-    // int32_t ihist;
-    // char filename[100];
-    // FILE* outfile;
-    // // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
-    // sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
-    //         yid);
-    // outfile = fopen(filename, "wb");
-    // write_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
-    //         nhistz, ndims, nbins, log_base);
-    // for (ihist = 0; ihist < nhists; ++ihist)
-    //     write_histogram(outfile, hists[ihist]);
-    // fclose(outfile);
 }
 
 void serialize_domain_histograms(
@@ -337,30 +326,26 @@ void write_ycolumn_histograms(
         domainnbytes = malloc(ypes * sizeof(int32_t));
     MPI_Gather(
             &domainnbyte, 1, MPI_INT, domainnbytes, 1, MPI_INT, rootid, comm);
-    printf("yid = %d and rootid = %d\n", yid, rootid);
     if (yid == rootid) {
         displs = malloc(ypes * sizeof(int32_t));
         for (ipes = 0; ipes < ypes; ++ipes) {
             displs[ipes] = globalnbyte;
-            printf("%d: domainnbytes[%d] = %d\n", yid, ipes, domainnbytes[ipes]);
             globalnbyte += domainnbytes[ipes];
         }
     }
-    printf("%d: globalnbyte = %d\n", yid, globalnbyte);
     globalbuffer = malloc(sizeof(char) * globalnbyte);
     MPI_Gatherv(domainbuffer, domainnbyte, MPI_CHAR, globalbuffer, domainnbytes,
             displs, MPI_CHAR, rootid, comm);
-    printf("%d: 3\n", yid);
     // write to file
     if (yid == rootid) {
-        // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
-        sprintf(filename, "../data/tracer-%.4E/pdfs-ycolumn-%03d.%05d", timestep,
+        sprintf(filename, "%s%.4E/pdfs-ycolumn-%03d.%05d", dirpre, timestep,
                 iconfig, xzid);
+        // sprintf(filename, "../data/tracer-%.4E/pdfs-ycolumn-%03d.%05d", timestep,
+                // iconfig, xzid);
         outfile = fopen(filename, "wb");
         fwrite((void*)globalbuffer, sizeof(char), globalnbyte, outfile);
         fclose(outfile);
     }
-    printf("%d: 4\n", yid);
     // clean up memeory
     if (yid == rootid) {
         free(displs);
@@ -368,58 +353,6 @@ void write_ycolumn_histograms(
     }
     free(domainbuffer);
     free(globalbuffer);
-
-    // // merge histograms in the domain into a buffer
-    // buffers = malloc(nhists * sizeof(char*));
-    // nbytes = malloc(nhists * sizeof(int32_t));
-    // serialize_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
-    //          nhistz, ndims, log_base, buffermeta, &nbytemeta);
-    // for (ihist = 0; ihist < nhists; ++ihist)
-    //     serialize_histogram(hists[ihist], buffer[ihist], nbytes);
-    // nbyte += nbytemeta;
-    // for (ihist = 0; ihist < nhists; ++ihist)
-    //     nbyte += nbytes[ihist];
-    // buffer = malloc(nbyte);
-    // memcpy(buffer, buffermeta, nbytemeta);
-    // free(buffermeta);
-    // ibyte += nbytemeta;
-    // for (ihist = 0; ihist < nhists; ++ihist) {
-    //     memcpy(buffer + ibyte, buffers[ihist], nbytes[ihist]);
-    //     ibyte += nbytes[ihist];
-    //     free(buffers[ihist]);
-    // }
-    // assert(nbyte == ibyte);
-    // free(buffers);
-    // // compute the total number of bytes for the global buffer
-    // if (yid = rootid)
-    //     nbytesg = malloc(nhists * sizeof(int32_t));
-    // MPI_Gather(&nbyte, 1, MPI_INT, nbytesg, 1, MPI_INT, rootid, comm);
-    // if (yid == rootid) {
-    //     displs = malloc(nhists * sizeof(int32_t));
-    //     for (ihist = 0; ihist < nhists; ++ihist) {
-    //         displs[ihist] = nbyteg;
-    //         nbyteg += nbytesg[ihist];
-    //     }
-    //     bufferg = malloc(nbyteg);
-    // }
-    // MPI_Gatherv(buffer, nbyte, MPI_CHAR, bufferg, nbytesg, displs, MPI_CHAR, rootid, comm);
-    // // clean up the buffers
-    // free(buffer);
-    // if (yid == rootid) {
-    //     free(displs);
-    //     free(nbytesg);
-    //     // printf("../data/tracer-%.4E/pdfs-%03d.%05d\n", timestep, iconfig, yid);
-    //     sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
-    //             xzid);
-    //     outfile = fopen(filename, "wb");
-    //     fwrite((void*)bufferg, sizeof(char), nbyteg, outfile);
-    //     // write_histogram_meta(outfile, ngridx, ngridy, ngridz, nhistx, nhisty,
-    //     //         nhistz, ndims, nbins, log_base);
-    //     // for (ihist = 0; ihist < nhists; ++ihist)
-    //     //     write_histogram(outfile, hists[ihist]);
-    //     fclose(outfile);
-    //     free(bufferg);
-    // }
 }
 
 SamplingRegion construct_sampling_region(
