@@ -15,7 +15,7 @@ static char dirpre[100] = "../data_pdf/pdf-";
 
 /// TODO: change histogram dimension to a, b, c
 
-#define PRINT_HISTOGRAM
+// #define PRINT_HISTOGRAM
 
 int32_t total_number_of_bins(int32_t ndims, int32_t nbins[]) {
     int32_t i, total = 1;

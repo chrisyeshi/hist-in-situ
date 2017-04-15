@@ -22,7 +22,7 @@ module histogram_m
   contains
 
   subroutine mpi_make_directory(dirname)
-    use topology_m
+    use topology_m, only : myid, gcomm, ierr
     implicit none
     character(len=*), intent(in) :: dirname
     if(myid == 0) then
@@ -39,12 +39,16 @@ module histogram_m
   ! initialize_histogram
   subroutine initialize_histogram( io )
     use topology_m
+    use param_m
+    use runtime_m
+    use grid_m
+    use tracer_m
     implicit none
     integer, intent(in) :: io
-    character filename*100
+    character filename*100, dirname*100
     integer, parameter :: io_inp = 92
     character dim1*100, dim2*100, dim3*100
-    integer :: stat, ndim
+    integer :: stat, ndim, ihist, idim
 
     filename = "../input/histogram.in"
     ! call inquire_about_input_file(filename, io)
@@ -104,6 +108,34 @@ module histogram_m
               mins_hist(nHistConfigs, 3), maxs_hist(nHistConfigs, 3)
         endif
       enddo
+      ! create the data_pdf directory
+      dirname = "../data_pdf/"
+#ifdef SYSTEMCALLWONTWORK
+        call makedirectory(trim(dirname)//char(0))
+#else
+        call execute_command('mkdir -p'//trim(dirname))
+#endif
+      ! write the pdf.config file in the data_pdf directory
+      filename = trim(dirname)//'pdf.config'
+      open(unit=630, file=trim(filename))
+      write(630,*) 'num grid points', nx_g, ny_g, nz_g 
+      write(630,*) 'num processors', xpes, ypes, zpes
+      write(630,*) 'num timesteps', i_time_end
+      write(630,*) 'save field frequency', i_time_save
+      write(630,*) 'physical bounding box lower', xmin, ymin, zmin
+      write(630,*) 'physical bounding box upper', xmax, ymax, zmax
+      write(630,*) 'save tracer frequency', trace_save_fctr
+      write(630,*) 'num pdfs per domain', nhx, nhy, nhz
+      write(630,*) 'histograms'
+      do ihist=1,nHistConfigs
+        write(630,*) 'dimension', ndim_hist(ihist)
+        do idim=1,ndim_hist(ihist)
+          write(630,*) vars_hist(ihist, idim), nbin_hist(ihist, idim), &
+              methods_hist(ihist, idim), mins_hist(ihist, idim), &
+              maxs_hist(ihist, idim)
+        enddo
+      enddo
+      close(630)
     endif
 
     ! broadcast the configurations to all processes
@@ -138,9 +170,16 @@ module histogram_m
 
   ! generate all histograms according to the configuration
   subroutine generate_and_output_histograms( io )
+    use reference_m, only: time_ref
+    use runtime_m, only: time
     implicit none
     integer, intent(in) :: io
     integer :: i
+    character time_ext*10
+
+    ! create directory
+    write(time_ext, '(1pe10.4)') time * time_ref
+    call mpi_make_directory('../data_pdf/pdf-'//trim(time_ext)//'/')
 
     do i=1,nHistConfigs
       call generate_and_output_histogram(io, i)
