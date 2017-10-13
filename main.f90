@@ -36,7 +36,7 @@ program histogram
 
   !---------------------------------------------------
   ! initialization block in solve_driver
-  call initialize_histogram( 6 )
+  call initialize_histogram( trace_save_fctr, 6 )
   ! call profile_clear()
   !---------------------------------------------------
 

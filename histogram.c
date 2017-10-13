@@ -1,4 +1,5 @@
 #include "histogram.h"
+#include "histogram_in.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -35,8 +36,9 @@ int32_t get_number_of_nonempty_bins(int32_t* frequencies, int32_t nbins) {
 }
 
 Histogram frequencies_to_histogram_dense(
-        int32_t ndims, int32_t* frequencies, int32_t nbins[], int32_t nnonemptybins,
-        double mins[], double maxs[], double percentinrange) {
+        int32_t ndims, int32_t* frequencies, int32_t nbins[],
+        int32_t nnonemptybins, double mins[], double maxs[],
+        double percentinrange) {
     int32_t i, totalbin;
     Histogram hist;
     hist.ndims = ndims;
@@ -55,8 +57,9 @@ Histogram frequencies_to_histogram_dense(
 }
 
 Histogram frequencies_to_histogram_sparse(
-        int32_t ndims, int32_t* frequencies, int32_t nbins[], int32_t nnonemptybins,
-        double mins[], double maxs[], double percentinrange) {
+        int32_t ndims, int32_t* frequencies, int32_t nbins[],
+        int32_t nnonemptybins, double mins[], double maxs[],
+        double percentinrange) {
     int32_t i, ibin, sparseindex, totalbin;
     Histogram hist;
     hist.ndims = ndims;
@@ -87,11 +90,11 @@ Histogram frequencies_to_histogram(
     nbin = total_number_of_bins(ndims, nbins);
     nnonemptybins = get_number_of_nonempty_bins(frequencies, nbin);
     if (nnonemptybins > 0.5 * nbin) {
-        return frequencies_to_histogram_dense(
-                ndims, frequencies, nbins, nnonemptybins, mins, maxs, percentinrange);
+        return frequencies_to_histogram_dense(ndims, frequencies, nbins,
+                nnonemptybins, mins, maxs, percentinrange);
     }
-    return frequencies_to_histogram_sparse(
-            ndims, frequencies, nbins, nnonemptybins, mins, maxs, percentinrange);
+    return frequencies_to_histogram_sparse(ndims, frequencies, nbins,
+            nnonemptybins, mins, maxs, percentinrange);
 }
 
 void deallocate_histogram(Histogram hist) {
@@ -149,8 +152,8 @@ void print_domain_histograms(
         Histogram hists[], int32_t nhists) {
 #ifdef PRINT_HISTOGRAM
     int32_t ihist;
-    print_histogram_meta(
-            ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, ndims, nbins, log_base);
+    print_histogram_meta(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, ndims,
+            nbins, log_base);
     for (ihist = 0; ihist < nhists; ++ihist)
         print_histogram(hists[ihist]);
 #endif // PRINT_HISTOGRAM
@@ -211,7 +214,8 @@ void write_histogram(FILE* outfile, Histogram hist) {
     // fwrite(&hist.percentinrange, sizeof(double), 1, outfile);
     // fwrite(&hist.nnonemptybins, sizeof(int32_t), 1, outfile);
     // if (hist.issparse) {
-    //     fwrite(hist.buffer, sizeof(int32_t), 2 * hist.nnonemptybins, outfile);
+    //     fwrite(hist.buffer, sizeof(int32_t), 2 * hist.nnonemptybins,
+    //             outfile);
     // } else {
     //     totalbin = total_number_of_bins(hist.ndims, hist.nbins);
     //     fwrite(hist.buffer, sizeof(int32_t), totalbin, outfile);
@@ -238,13 +242,19 @@ void serialize_histogram(Histogram hist, char** buffer, int32_t *nbyte) {
     }
     ibyte = 0;
     memcpy(*buffer, &hist.issparse, sizeof(int32_t)); ibyte += sizeof(int32_t);
-    memcpy(*buffer + ibyte, hist.mins, sizeof(double) * hist.ndims); ibyte += sizeof(double) * hist.ndims;
-    memcpy(*buffer + ibyte, hist.maxs, sizeof(double) * hist.ndims); ibyte += sizeof(double) * hist.ndims;
-    memcpy(*buffer + ibyte, hist.nbins, sizeof(int32_t) * hist.ndims); ibyte += sizeof(int32_t) * hist.ndims;
-    memcpy(*buffer + ibyte, &hist.percentinrange, sizeof(double)); ibyte += sizeof(double);
-    memcpy(*buffer + ibyte, &hist.nnonemptybins, sizeof(int32_t)); ibyte += sizeof(int32_t);
+    memcpy(*buffer + ibyte, hist.mins, sizeof(double) * hist.ndims);
+    ibyte += sizeof(double) * hist.ndims;
+    memcpy(*buffer + ibyte, hist.maxs, sizeof(double) * hist.ndims);
+    ibyte += sizeof(double) * hist.ndims;
+    memcpy(*buffer + ibyte, hist.nbins, sizeof(int32_t) * hist.ndims);
+    ibyte += sizeof(int32_t) * hist.ndims;
+    memcpy(*buffer + ibyte, &hist.percentinrange, sizeof(double));
+    ibyte += sizeof(double);
+    memcpy(*buffer + ibyte, &hist.nnonemptybins, sizeof(int32_t));
+    ibyte += sizeof(int32_t);
     if (hist.issparse) {
-        memcpy(*buffer + ibyte, hist.buffer, sizeof(int32_t) * 2 * hist.nnonemptybins);
+        memcpy(*buffer + ibyte, hist.buffer,
+                sizeof(int32_t) * 2 * hist.nnonemptybins);
         assert(*nbyte == ibyte + sizeof(int32_t) * 2 * hist.nnonemptybins);
     } else {
         memcpy(*buffer + ibyte, hist.buffer, sizeof(int32_t) * totalbin);
@@ -264,8 +274,8 @@ void write_domain_histograms(
     char filename[100];
     FILE* outfile;
     sprintf(filename, "%s%.4E/pdfs-%03d.%05d", dirpre, timestep, iconfig, yid);
-    // sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep, iconfig,
-            // yid);
+    // sprintf(filename, "../data/tracer-%.4E/pdfs-%03d.%05d", timestep,
+            // iconfig, yid);
     outfile = fopen(filename, "wb");
     serialize_domain_histograms(ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
             ndims, log_base, hists, nhists, &buffer, &nbyte);
@@ -340,8 +350,8 @@ void write_ycolumn_histograms(
     if (yid == rootid) {
         sprintf(filename, "%s%.4E/pdfs-ycolumn-%03d.%05d", dirpre, timestep,
                 iconfig, xzid);
-        // sprintf(filename, "../data/tracer-%.4E/pdfs-ycolumn-%03d.%05d", timestep,
-                // iconfig, xzid);
+        // sprintf(filename, "../data/tracer-%.4E/pdfs-ycolumn-%03d.%05d",
+                // timestep, iconfig, xzid);
         outfile = fopen(filename, "wb");
         fwrite((void*)globalbuffer, sizeof(char), globalnbyte, outfile);
         fclose(outfile);
@@ -557,8 +567,6 @@ void compute_nbins(int32_t ndims, SamplingRegion samplingregion, double mins[],
             } else {
                 nbins[idim] = MIN(MAX_NBINS, (maxs[idim] - mins[idim]) / h);
             }
-            // printf("nsamples = %d, q1 = %f, q3 = %f, iqr = %f, h = %f, and nbins = %d\n",
-                    // nsamples, q1, q3, iqr, h, nbins[idim]);
             // free the allocated array
             free(samples);
         }
@@ -746,3 +754,55 @@ void c_generate_and_output_histogram_3d_(
             timestep, 3, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz, nbins,
             yid, rootid, ypes, comm, xzid, iconfig);
 }
+
+void c_generate_and_output_histogram_(
+        double *ptr_values, double *ptr_log_bases, char* ptr_methods,
+        char *ptr_nbins, double *ptr_mins, double *ptr_maxs,
+        double *ptr_timestep, int32_t *ptr_ndims,
+        int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
+        int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
+        int32_t *ptr_yid, int32_t *ptr_rootid,
+        int32_t *ptr_ypes, MPI_Fint *ptr_comm, int32_t *ptr_xzid,
+        int32_t *ptr_iconfig) {
+    // constant variables
+    int32_t stringLength = 30;
+    // temporary variables
+    int i;
+    // convert from pointers to actual input arguments
+    int32_t ndims = *ptr_ndims;
+    double* log_bases = ptr_log_bases;
+    char* methods[MAX_DIM];
+    char* nbins[MAX_DIM];
+    for (i = 0; i < ndims; ++i) {
+        methods[i] = ptr_methods + stringLength * i;
+        nbins[i] = ptr_nbins + stringLength + i;
+    }
+    double* mins = ptr_mins;
+    double* maxs = ptr_maxs;
+    double timestep = *ptr_timestep;
+    int32_t ngridx = *ptr_ngridx, ngridy = *ptr_ngridy, ngridz = *ptr_ngridz;
+    int32_t nhistx = *ptr_nhistx, nhisty = *ptr_nhisty, nhistz = *ptr_nhistz;
+    int32_t yid = *ptr_yid, rootid = *ptr_rootid, ypes = *ptr_ypes;
+    MPI_Comm comm = MPI_Comm_f2c(*ptr_comm);
+    int32_t xzid = *ptr_xzid;
+    int32_t iconfig = *ptr_iconfig;
+    // values
+    int32_t ngrid = ngridx * ngridy * ngridz;
+    double* values[MAX_DIM];
+    for (i = 0; i < ndims; ++i) {
+        values[i] = ptr_values + ngrid * i;
+    }
+    // generate and output
+    generate_and_output_histogram(values, log_bases, methods, mins, maxs,
+            timestep, ndims, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz,
+            nbins, yid, rootid, ypes, comm, xzid, iconfig);
+}
+
+void c_test_(double *ptr_values, double *ptr_log_bases, char* ptr_methods,
+        char *ptr_nbins, double *ptr_mins, double *ptr_maxs,
+        double *ptr_timestep, int32_t *ptr_ndims,
+        int32_t *ptr_ngridx, int32_t *ptr_ngridy, int32_t *ptr_ngridz,
+        int32_t *ptr_nhistx, int32_t *ptr_nhisty, int32_t *ptr_nhistz,
+        int32_t *ptr_yid, int32_t *ptr_rootid,
+        int32_t *ptr_ypes, MPI_Fint *ptr_comm, int32_t *ptr_xzid,
+        int32_t *ptr_iconfig) {}

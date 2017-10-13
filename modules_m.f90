@@ -14,9 +14,15 @@ module variables_m
   real*8, dimension(12,12,12) :: temp
 end module variables_m
 
+module grid_m
+  implicit none
+  real :: xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = 1.0, zmin = 0.0, zmax = 1.0
+end module grid_m
+
 module param_m
   implicit none
   integer :: nx = 12, ny = 12, nz = 12, n_spec = 4
+  integer :: nx_g = 24, ny_g = 24, nz_g = 24
 end module param_m
 
 module reference_m
@@ -44,13 +50,14 @@ end module reference_m
 module runtime_m
   implicit none
   real*8 :: time
-  integer :: i_time
+  integer :: i_time, i_time_end, i_time_save
 end module runtime_m
 
 module topology_m
   implicit none
   include 'mpif.h'
-  integer :: myid = 0, yid = 0, ypes = 1, xz_id = 0
+  integer :: myid = 0, yid = 0, xz_id = 0
+  integer :: xpes = 2, ypes = 2, zpes = 2
   integer :: gcomm = MPI_COMM_WORLD, ycomm = MPI_COMM_WORLD
   integer :: ierr
 

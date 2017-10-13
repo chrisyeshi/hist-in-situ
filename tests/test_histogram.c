@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <histogram.h>
+#include <histogram_in.h>
 
 void test_total_number_of_bins() {
     int32_t d1[] = {4};

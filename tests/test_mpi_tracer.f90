@@ -45,6 +45,7 @@ program test_tracer
   dob(3) = 6.0
   state(3) = 6
 
+  call execute_command_line('mkdir -p ../data/tracer-0.0000E+00/')
   call sort_by_histograms_and_output_offsets(6)
 
   ! write(*,*) "ssn:", ssn(1:fill)

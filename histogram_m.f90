@@ -37,14 +37,14 @@ module histogram_m
   end subroutine mpi_make_directory
 
   ! initialize_histogram
-  subroutine initialize_histogram( io )
+  subroutine initialize_histogram( pdf_save_fctr, io )
     use topology_m
     use param_m
     use runtime_m
     use grid_m
-    use tracer_m
     implicit none
     integer, intent(in) :: io
+    real, intent(in) :: pdf_save_fctr
     character filename*100, dirname*100
     integer, parameter :: io_inp = 92
     character dim1*100, dim2*100, dim3*100
@@ -118,13 +118,13 @@ module histogram_m
       ! write the pdf.config file in the data_pdf directory
       filename = trim(dirname)//'pdf.config'
       open(unit=630, file=trim(filename))
-      write(630,*) 'num grid points', nx_g, ny_g, nz_g 
+      write(630,*) 'num grid points', nx_g, ny_g, nz_g
       write(630,*) 'num processors', xpes, ypes, zpes
       write(630,*) 'num timesteps', i_time_end
       write(630,*) 'save field frequency', i_time_save
       write(630,*) 'physical bounding box lower', xmin, ymin, zmin
       write(630,*) 'physical bounding box upper', xmax, ymax, zmax
-      write(630,*) 'save tracer frequency', trace_save_fctr
+      write(630,*) 'save tracer frequency', pdf_save_fctr
       write(630,*) 'num pdfs per domain', nhx, nhy, nhz
       write(630,*) 'histograms'
       do ihist=1,nHistConfigs
@@ -257,43 +257,20 @@ module histogram_m
     integer, intent(in) :: io, nDim, iConfig
     character, dimension(3), intent(in) :: methods*30, nbin*30
     real*8, intent(in) :: data(:,:,:,:), mins(:), maxs(:)
-    if (nDim == 1) then
-      call c_generate_and_output_histogram_1d(data(:,:,:,1), &
-                                              0.0, &       ! log base for scaling
-                                              methods(1), &
-                                              mins(1), &
-                                              maxs(1), &
-                                              time * time_ref, &
-                                              nx, ny, nz, &
-                                              nhx, nhy, nhz, &
-                                              nbin(1), &
-                                              yid, 0, ypes, ycomm, xz_id, &
-                                              iConfig)
-    elseif (nDim == 2) then
-      call c_generate_and_output_histogram_2d(data(:,:,:,1), data(:,:,:,2), &
-                                              0.0, 0.0, &       ! log base for scaling
-                                              methods(1), methods(2), &
-                                              mins(1), mins(2), &
-                                              maxs(1), maxs(2), &
-                                              time * time_ref, &
-                                              nx, ny, nz, &
-                                              nhx, nhy, nhz, &
-                                              nbin(1), nbin(2), &
-                                              yid, 0, ypes, ycomm, xz_id, &
-                                              iConfig)
-    elseif (nDim == 3) then
-      call c_generate_and_output_histogram_3d(data(:,:,:,1), data(:,:,:,2), data(:,:,:,3), &
-                                              0.0, 0.0, 0.0, &       ! log base for scaling
-                                              methods(1), methods(2), methods(3), &
-                                              mins(1), mins(2), mins(3), &
-                                              maxs(1), maxs(2), maxs(3), &
-                                              time * time_ref, &
-                                              nx, ny, nz, &
-                                              nhx, nhy, nhz, &
-                                              nbin(1), nbin(2), nbin(3), &
-                                              yid, 0, ypes, ycomm, xz_id, &
-                                              iConfig)
-    endif
+    real*8, dimension(3) :: log_bases
+
+    log_bases(1) = 0.0
+    log_bases(2) = 0.0
+    log_bases(3) = 0.0
+
+    call c_generate_and_output_histogram( &
+        data(:,:,:,:), log_bases(:), methods, nbin, &
+        mins, maxs, &
+        time * time_ref, &
+        nDim, &
+        nx, ny, nz, &
+        nhx, nhy, nhz, &
+        yid, 0, ypes, ycomm, xz_id, iConfig)
 
   end subroutine generate_and_output_histogram_nd
 
