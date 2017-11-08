@@ -21,9 +21,6 @@ enable_testing()
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data
 	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data_pdf
-	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../)
-
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/input
 	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../)
 
@@ -38,3 +35,7 @@ add_test(test_tracer test_tracer)
 add_executable(test_mpi_tracer tests/test_mpi_tracer.f90 ${SOURCES})
 target_link_libraries(test_mpi_tracer ${MPI_Fortran_LIBRARIES})
 add_test(NAME test_mpi_tracer COMMAND ${MPIEXEC} "-n" 2 "./test_mpi_tracer")
+
+add_executable(test_write_histograms_grouped_by_mpi_comm tests/test_write_histograms_grouped_by_mpi_comm.c ${SOURCES})
+target_link_libraries(test_write_histograms_grouped_by_mpi_comm ${MPI_Fortran_LIBRARIES})
+add_test(NAME test_write_histograms_grouped_by_mpi_comm COMMAND ${MPIEXEC} "-n" 5 "./test_write_histograms_grouped_by_mpi_comm")

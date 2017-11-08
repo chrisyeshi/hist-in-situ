@@ -35,7 +35,7 @@ module reference_m
   real*8 t_ref
   real*8 t_o
   real*8 p_ref
-  real*8 time_ref
+  real*8 :: time_ref = 1.0
   real*8 cp_ref
   real*8 univ_gascon
   real*8 g_ref
@@ -49,8 +49,8 @@ end module reference_m
 
 module runtime_m
   implicit none
-  real*8 :: time
-  integer :: i_time, i_time_end, i_time_save
+  real*8 :: time = 0.0
+  integer :: i_time, i_time_end = 10, i_time_save = 1
 end module runtime_m
 
 module topology_m

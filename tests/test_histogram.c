@@ -41,6 +41,7 @@ void test_frequencies_to_histogram_1d_dense() {
     assert(frequencies != hist.buffer);
     for (i = 0; i < 5; ++i)
         assert(hist.buffer[i] == frequencies[i]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram_2d_dense() {
@@ -63,6 +64,7 @@ void test_frequencies_to_histogram_2d_dense() {
     assert(frequencies != hist.buffer);
     for (i = 0; i < 6; ++i)
         assert(hist.buffer[i] == frequencies[i]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram_3d_dense() {
@@ -88,6 +90,7 @@ void test_frequencies_to_histogram_3d_dense() {
     assert(frequencies != hist.buffer);
     for (i = 0; i < 8; ++i)
         assert(hist.buffer[i] == frequencies[i]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram_1d_sparse() {
@@ -111,6 +114,7 @@ void test_frequencies_to_histogram_1d_sparse() {
     assert(45 == hist.buffer[3]);
     assert(5 == hist.buffer[4]);
     assert(8 == hist.buffer[5]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram_2d_sparse() {
@@ -133,6 +137,7 @@ void test_frequencies_to_histogram_2d_sparse() {
     assert(frequencies != hist.buffer);
     assert(1 == hist.buffer[0]);
     assert(5 == hist.buffer[1]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram_3d_sparse() {
@@ -162,6 +167,7 @@ void test_frequencies_to_histogram_3d_sparse() {
     assert(2 == hist.buffer[3]);
     assert(6 == hist.buffer[4]);
     assert(50 == hist.buffer[5]);
+    deallocate_histogram(hist);
 }
 
 void test_frequencies_to_histogram() {
@@ -176,6 +182,8 @@ void test_frequencies_to_histogram() {
     Histogram sparsehist = frequencies_to_histogram(
             3, sparsevalues, nbins, mins, maxs, 0.87);
     assert(1 == sparsehist.issparse);
+    deallocate_histogram(densehist);
+    deallocate_histogram(sparsehist);
 }
 
 void test_adjust_range_by_methods() {
@@ -342,6 +350,7 @@ void test_generate_histogram_from_sampling_region() {
     assert(1 == hist.nnonemptybins);
     assert(6 == hist.buffer[0]);
     assert(90 == hist.buffer[1]);
+    deallocate_histogram(hist);
 }
 
 void test_write_histogram_meta() {
@@ -497,8 +506,8 @@ void test_serialize_domain_histograms() {
     writehists[1].maxs[1] = 2.6;
     writehists[1].maxs[2] = 2.7;
     writehists[1].percentinrange = 0.96;
-    serialize_domain_histograms(4, 2, 2, 2, 1, 1, 1, log_base, writehists, 2,
-            &buffer, &nbyte);
+    serialize_domain_histograms(
+            4, 2, 2, 2, 1, 1, 1, log_base, writehists, 2, &buffer, &nbyte);
     ibyte = 0;
     // read domain meta
     memcpy(&ndims, buffer + ibyte, sizeof(int32_t)); ibyte += sizeof(int32_t);
@@ -609,6 +618,116 @@ void test_values_to_bin_index() {
     assert(2 + 50 + 700 == values_to_bin_index(3, values, mins, maxs, nbins));
 }
 
+void test_buffer_to_hist_byte() {
+    {
+        int32_t frequencies[5] = {0, 0, 1, 2, 3};
+        int32_t nbins[] = {5}, nBytes;
+        double mins[] = {12.34};
+        double maxs[] = {34.56};
+        Histogram hist = frequencies_to_histogram_dense(
+                1, frequencies, nbins, 3, mins, maxs, 0.78);
+        char* buffer;
+        serialize_histogram(hist, &buffer, &nBytes);
+        assert(nBytes == buffer_to_hist_byte(buffer, 1));
+        deallocate_histogram(hist);
+        free(buffer);
+    }
+    {
+        int32_t frequencies[4] = {0, 5, 0, 0};
+        int32_t nbins[] = {2, 2}, nBytes;
+        double mins[] = {12.34, 23.45};
+        double maxs[] = {34.56, 45.67};
+        Histogram hist = frequencies_to_histogram_sparse(
+                2, frequencies, nbins, 1, mins, maxs, 0.78);
+        char* buffer;
+        serialize_histogram(hist, &buffer, &nBytes);
+        assert(nBytes == buffer_to_hist_byte(buffer, 2));
+        deallocate_histogram(hist);
+        free(buffer);
+    }
+}
+
+void test_buffer_to_hist_count() {
+    {
+        int32_t frequencies[5] = {0, 0, 1, 2, 3};
+        int32_t nbins[] = {5}, nBytes;
+        double mins[] = {12.34};
+        double maxs[] = {34.56};
+        Histogram hist = frequencies_to_histogram_dense(
+                1, frequencies, nbins, 3, mins, maxs, 0.78);
+        char* buffer;
+        serialize_histogram(hist, &buffer, &nBytes);
+        assert(1 == buffer_to_hist_count(nBytes, buffer, hist.ndims));
+        deallocate_histogram(hist);
+        free(buffer);
+    }
+}
+
+void test_serialize_histogram() {
+    {
+        int32_t frequencies[5] = {0, 0, 1, 2, 3};
+        int32_t nbins[] = {5}, nBytes, histBufferByteCount;
+        double mins[] = {12.34};
+        double maxs[] = {34.56};
+        Histogram hist = frequencies_to_histogram_dense(
+                1, frequencies, nbins, 3, mins, maxs, 0.78);
+        Histogram deHist;
+        char* buffer;
+        serialize_histogram(hist, &buffer, &nBytes);
+        deserialize_histogram(
+                buffer, hist.ndims, &histBufferByteCount, &deHist);
+        assert(56 == histBufferByteCount);
+        assert(is_same_histogram(hist, deHist));
+        deallocate_histogram(deHist);
+        deallocate_histogram(hist);
+        free(buffer);
+    }
+    {
+        int32_t frequencies[8] = {0, 9, 0, 0, 2, 0, 50, 0};
+        int32_t nbins[] = {2, 2, 2}, nBytes, histBufferByteCount;
+        double mins[] = {1.2, 2.3, 3.4};
+        double maxs[] = {2.3, 3.4, 4.5};
+        Histogram hist = frequencies_to_histogram_sparse(
+                3, frequencies, nbins, 3, mins, maxs, 0.45);
+        Histogram deHist;
+        char* buffer;
+        serialize_histogram(hist, &buffer, &nBytes);
+        deserialize_histogram(
+                buffer, hist.ndims, &histBufferByteCount, &deHist);
+        assert(100 == histBufferByteCount);
+        assert(is_same_histogram(hist, deHist));
+        deallocate_histogram(deHist);
+        deallocate_histogram(hist);
+        free(buffer);
+    }
+}
+
+void test_serialize_histogram_meta() {
+    {
+        char* buffer;
+        int32_t nbyte;
+        int32_t ngridx1 = 3, ngridy1 = 4, ngridz1 = 5,
+                nhistx1 = 6, nhisty1 = 7, nhistz1 = 8,
+                ndims1 = 2;
+        double log_base1[MAX_DIM] = {1, 2};
+        int32_t ngridx2, ngridy2, ngridz2,
+                nhistx2, nhisty2, nhistz2,
+                ndims2;
+        double log_base2[MAX_DIM];
+        serialize_histogram_meta(ngridx1, ngridy1, ngridz1, nhistx1, nhisty1,
+                nhistz1, ndims1, log_base1, &buffer, &nbyte);
+        deserialize_histogram_meta(buffer, nbyte, &ngridx2, &ngridy2, &ngridz2,
+                &nhistx2, &nhisty2, &nhistz2, &ndims2, log_base2);
+        assert(ngridx1 == ngridx2);
+        assert(ngridy1 == ngridy2);
+        assert(ngridz1 == ngridz2);
+        assert(nhistx1 == nhistx2);
+        assert(nhisty1 == nhisty2);
+        assert(nhistz1 == nhistz2);
+        free(buffer);
+    }
+}
+
 int main(void) {
     test_total_number_of_bins();
     test_get_number_of_nonempty_bins();
@@ -628,5 +747,9 @@ int main(void) {
     test_serialize_domain_histograms();
     test_ids_to_flat();
     test_values_to_bin_index();
+    test_buffer_to_hist_byte();
+    test_buffer_to_hist_count();
+    test_serialize_histogram();
+    test_serialize_histogram_meta();
     return 0;
 }

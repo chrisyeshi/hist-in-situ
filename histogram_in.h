@@ -76,9 +76,36 @@ void serialize_histogram_meta(
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, double log_base[], char** buffer, int32_t* nbyte);
 
+void deserialize_histogram_meta(
+        char* buffer, int32_t nbyte,
+        int32_t* ngridx, int32_t* ngridy, int32_t* ngridz,
+        int32_t* nhistx, int32_t* nhisty, int32_t* nhistz,
+        int32_t* ndims, double log_base[]);
+
 void write_histogram(FILE* outfile, Histogram hist);
 
+int hist_buffer_byte_count(int32_t issparse, int32_t ndims, int32_t nbins[],
+        int32_t nnonemptybins);
+
+int hist_byte_count(int32_t issparse, int32_t ndims, int32_t nbins[],
+        int32_t nnonemptybins);
+
+int buffer_to_hist_byte(char* buffer, int ndims);
+
+int buffer_to_hist_count(int nBytes, char* buffer, int ndims);
+
 void serialize_histogram(Histogram hist, char** buffer, int32_t *nbyte);
+
+void serialize_histograms(
+        int nHists, Histogram hists[], int* nBytes, char** buffer);
+
+void deserialize_histogram(
+        char* buffer, int ndims, int* histBufferByteCount, Histogram* hist);
+
+void deserialize_histograms(
+        int nBytes, char* buffer, int ndims, int* nHists, Histogram** hists);
+
+int is_same_histogram(Histogram a, Histogram b);
 
 void write_domain_histograms(
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
@@ -93,6 +120,13 @@ void serialize_domain_histograms(
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         int32_t ndims, double log_base[],
         Histogram hists[], int32_t nhists, char** buffer, int32_t* nbyte);
+
+void write_histograms_grouped_by_mpi_comm(
+        int32_t ngridx, int32_t ngridy, int32_t ngridz,
+        int32_t nhistx, int32_t nhisty, int32_t nhistz,
+        int32_t ndims, double log_base[], Histogram hists[], int32_t nhists,
+        double timestep, int32_t yid, int32_t rootid, int32_t ypes,
+        MPI_Comm comm, int32_t xzid, int32_t iconfig, const char* midname);
 
 void write_ycolumn_histograms(
         int32_t ngridx, int32_t ngridy, int32_t ngridz,
@@ -121,5 +155,13 @@ void generate_and_output_histogram(
         int32_t nhistx, int32_t nhisty, int32_t nhistz,
         char* nbins[], int32_t myid, int32_t rootid, int32_t ypes,
         MPI_Comm comm, int32_t xzid, int32_t iconfig);
+
+//
+// mpi helper functions
+//
+
+void gather_buffers(int nBytesPerRank, char* bufferPerRank,
+        int** nBytesPerRanks, int* nBytes, char** buffer, int root,
+        MPI_Comm comm);
 
 #endif // HISTOGRAM_IN_H
