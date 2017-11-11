@@ -20,22 +20,14 @@ void create_mpi_comms(int nComms, MPI_Comm* comm, int* groupId) {
 }
 
 Histogram random_histogram() {
-        // int32_t frequencies[5] = {0, 0, 1, 2, 3};
-        // int32_t nbins[] = {5}, nBytes, histBufferByteCount;
-        // double mins[] = {12.34};
-        // double maxs[] = {34.56};
-        // Histogram hist = frequencies_to_histogram_dense(
-        //         1, frequencies, nbins, 3, mins, maxs, 0.78);
-
-
     int iBin;
     int32_t frequencies[5] = {0, 0, 1, 2, 3};
     int32_t nbins[] = {5};
     double mins[] = {12.34};
     double maxs[] = {34.56};
-    // for (int iBin = 0; iBin < 5; ++iBin) {
-    //     frequencies[iBin] = rand();
-    // }
+    for (int iBin = 0; iBin < 5; ++iBin) {
+        frequencies[iBin] = rand();
+    }
     Histogram hist = frequencies_to_histogram_dense(
             nDims, frequencies, nbins, 3, mins, maxs, 0.78);
     return hist;
